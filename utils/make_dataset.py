@@ -1,8 +1,11 @@
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
+from ta.trend import MACD
+from ta.momentum import RSIIndicator
+from ta.trend import CCIIndicator
+from ta.trend import ADXIndicator
 
-#test comment
 def get_ticker_data(start_date, end_date, ticker_list):
     all_data = []
     for ticker_symbol in ticker_list:
@@ -17,7 +20,23 @@ def get_ticker_data(start_date, end_date, ticker_list):
     res_df = pd.concat(all_data, ignore_index=True).sort_values(['date', 'ticker']).reset_index(drop=True)
     return res_df
 
+def add_technical_indicators(dataset):
+    dataset['macd'] = MACD(dataset['adjcp']).macd()
+
+    dataset['rsi'] = RSIIndicator(dataset['adjcp']).rsi()
+
+    dataset['cci'] = CCIIndicator(dataset['high'], dataset['low'], dataset['adjcp']).cci()
+
+    adx = ADXIndicator(dataset['high'], dataset['low'], dataset['adjcp'])
+    dataset['adx'] = adx.adx()
+
+    return dataset
+
+def add_turbulence(dataset):
+    return dataset
+
 if __name__ == "__main__":
+    buffer_start_date = '2008-12-01'
     start_date = '2009-01-01'
     end_date = datetime.today().strftime('%Y-%m-%d')
     ticker_list = [
@@ -26,5 +45,7 @@ if __name__ == "__main__":
     'PFE', 'PG', 'RTX', 'TRV', 'UNH', 'V', 'VZ', 'WBA', 'WMT', 'XOM'
     ]
 
-    df = get_ticker_data(start_date, end_date, ticker_list)
-    print(df)
+    df = get_ticker_data(buffer_start_date, end_date, ticker_list)
+    df = add_technical_indicators(df)
+
+    df.to_csv('test.csv')
