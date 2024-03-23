@@ -7,14 +7,14 @@ def get_ticker_data(start_date, end_date, ticker_list):
     for ticker_symbol in ticker_list:
         stock_data = yf.download(ticker_symbol, start=start_date, end=end_date)
 
-        stock_data['tic'] = ticker_symbol
-        stock_data = stock_data.reset_index().rename(columns={'Date':'datadate'})
-        stock_data = stock_data[['datadate', 'tic', 'Adj Close', 'Open', 'High', 'Low', 'Volume']]
-        stock_data.columns = ['datadate', 'tic', 'adjcp', 'open', 'high', 'low', 'volume']
+        stock_data['ticker'] = ticker_symbol
+        stock_data = stock_data.reset_index()
+        stock_data = stock_data[['Date', 'ticker', 'Adj Close', 'Open', 'High', 'Low', 'Volume']]
+        stock_data.columns = ['date', 'ticker', 'adjcp', 'open', 'high', 'low', 'volume']
         all_data.append(stock_data)
 
-    combined_data = pd.concat(all_data, ignore_index=True).sort_values(['datadate', 'tic'])
-    return combined_data
+    res_df = pd.concat(all_data, ignore_index=True).sort_values(['date', 'ticker']).reset_index(drop=True)
+    return res_df
 
 if __name__ == "__main__":
     start_date = '2009-01-01'
@@ -25,4 +25,5 @@ if __name__ == "__main__":
     'PFE', 'PG', 'RTX', 'TRV', 'UNH', 'V', 'VZ', 'WBA', 'WMT', 'XOM'
     ]
 
-    print(get_ticker_data(start_date, end_date, ticker_list))
+    df = get_ticker_data(start_date, end_date, ticker_list)
+    print(df)
