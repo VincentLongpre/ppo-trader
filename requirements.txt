@@ -1,0 +1,11 @@
+cloudpickle==3.0.0
+gym==0.26.2
+gym-notices==0.0.8
+importlib_metadata==7.1.0
+numpy==1.26.4
+pandas==2.2.1
+python-dateutil==2.9.0.post0
+pytz==2024.1
+six==1.16.0
+tzdata==2024.1
+zipp==3.18.1
