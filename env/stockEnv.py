@@ -11,6 +11,7 @@ class StockEnv(gym.Env):
         self.day = day
         self.dataframe = dataframe
         self.turbulance_tresh = turbulance_tresh
+        self.terminal = False 
 
         self.data = dataframe.iloc[day]
 
