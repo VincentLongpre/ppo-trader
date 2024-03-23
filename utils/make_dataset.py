@@ -2,7 +2,6 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime
 
-#test push comment
 def get_ticker_data(start_date, end_date, ticker_list):
     all_data = []
     for ticker_symbol in ticker_list:
