@@ -21,22 +21,34 @@ def get_ticker_data(start_date, end_date, ticker_list):
     return res_df
 
 def add_technical_indicators(dataset):
-    dataset['macd'] = MACD(dataset['adjcp']).macd()
-
-    dataset['rsi'] = RSIIndicator(dataset['adjcp']).rsi()
-
-    dataset['cci'] = CCIIndicator(dataset['high'], dataset['low'], dataset['adjcp']).cci()
-
-    adx = ADXIndicator(dataset['high'], dataset['low'], dataset['adjcp'])
-    dataset['adx'] = adx.adx()
-
+    technical_indicators = {}
+    
+    for ticker_symbol, data in dataset.groupby('ticker'):
+        macd = MACD(data['adjcp']).macd()
+        
+        rsi = RSIIndicator(data['adjcp']).rsi()
+        
+        cci = CCIIndicator(data['high'], data['low'], data['adjcp']).cci()
+        
+        adx = ADXIndicator(data['high'], data['low'], data['adjcp']).adx()
+        
+        technical_indicators[ticker_symbol] = pd.DataFrame({
+            'macd': macd,
+            'rsi': rsi,
+            'cci': cci,
+            'adx': adx
+        }, index=data.index)
+    
+    for ticker_symbol, indicators_data in technical_indicators.items():
+        dataset.loc[dataset['ticker'] == ticker_symbol, ['macd', 'rsi', 'cci', 'adx']] = indicators_data.values
+    
     return dataset
 
 def add_turbulence(dataset):
     return dataset
 
 if __name__ == "__main__":
-    buffer_start_date = '2008-12-01'
+    buffer_start_date = '2008-11-01'
     start_date = '2009-01-01'
     end_date = datetime.today().strftime('%Y-%m-%d')
     ticker_list = [
