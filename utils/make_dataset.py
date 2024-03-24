@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 from ta.trend import MACD
 from ta.momentum import RSIIndicator
 from ta.trend import CCIIndicator
@@ -61,12 +61,23 @@ def calculate_turbulence(df, window=252):
         temp = np.dot(current_returns.values, np.linalg.inv(cov_temp)).dot(current_returns.values.T)
         turbulence_temp = temp if temp > 0 else 0
         
-        df_copy.loc[df['date'] == hist_prices.index[-1], 'turbulence'] = turbulence_temp
+        df_copy.loc[df['date'] == current_price.name, 'turbulence'] = turbulence_temp
     
     return df_copy
 
+def create_dataset(start_date, end_date, ticker_list):
+    # Query data with extra time buffer for window metrics
+    buffer_start = (datetime.strptime(start_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
+    dataset = get_ticker_data(buffer_start, end_date, ticker_list)
+    dataset = add_technical_indicators(dataset)
+    dataset = calculate_turbulence(dataset)
+
+    # Trim off calculation buffer
+    dataset = dataset[dataset['date'] > start_date]
+
+    return dataset
+
 if __name__ == "__main__":
-    buffer_start_date = '2008-01-01'
     start_date = '2009-01-01'
     end_date = datetime.today().strftime('%Y-%m-%d')
     ticker_list = [
@@ -75,8 +86,6 @@ if __name__ == "__main__":
     'PFE', 'PG', 'RTX', 'TRV', 'UNH', 'V', 'VZ', 'WBA', 'WMT', 'XOM'
     ]
 
-    df = get_ticker_data(buffer_start_date, end_date, ticker_list)
-    df = add_technical_indicators(df)
-    df = calculate_turbulence(df)
+    df = create_dataset(start_date, end_date, ticker_list)
 
-    # df.to_csv('test.csv')
+    df.to_csv('processed_dataset.csv')
