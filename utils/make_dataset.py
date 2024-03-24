@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import yfinance as yf
 from datetime import datetime
 from ta.trend import MACD
@@ -44,11 +45,28 @@ def add_technical_indicators(dataset):
     
     return dataset
 
-def add_turbulence(dataset):
-    return dataset
+def calculate_turbulence(df, window=252):
+    df_copy = df.copy()
+    df_price_pivot = df.pivot(index='date', columns='ticker', values='adjcp')
+    
+    for i in range(window, len(df_price_pivot)):
+        current_price = df_price_pivot.iloc[i]
+        hist_prices = df_price_pivot.iloc[i - window:i]
+        
+        cov_temp = hist_prices.cov()
+        mean_returns = hist_prices.mean()
+        
+        current_returns = (current_price - mean_returns)
+        
+        temp = np.dot(current_returns.values, np.linalg.inv(cov_temp)).dot(current_returns.values.T)
+        turbulence_temp = temp if temp > 0 else 0
+        
+        df_copy.loc[df['date'] == hist_prices.index[-1], 'turbulence'] = turbulence_temp
+    
+    return df_copy
 
 if __name__ == "__main__":
-    buffer_start_date = '2008-11-01'
+    buffer_start_date = '2008-01-01'
     start_date = '2009-01-01'
     end_date = datetime.today().strftime('%Y-%m-%d')
     ticker_list = [
@@ -59,5 +77,6 @@ if __name__ == "__main__":
 
     df = get_ticker_data(buffer_start_date, end_date, ticker_list)
     df = add_technical_indicators(df)
+    df = calculate_turbulence(df)
 
-    df.to_csv('test.csv')
+    # df.to_csv('test.csv')
