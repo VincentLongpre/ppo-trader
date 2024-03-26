@@ -9,11 +9,12 @@ TRANSACTION_FEE_PERCENT = 0.01
 REWARD_SCALING = 1e-4
 
 class StockEnv(gym.Env):
-    def __init__(self, dataframe, day=0, turbulance_tresh=0) -> None:
+    def __init__(self, dataframe, day=0, turbulence_tresh=140, env_type="rain") -> None:
         self.day = day
         self.dataframe = dataframe
-        self.turbulance_tresh = turbulance_tresh
+        self.turbulence_tresh = turbulence_tresh
         self.terminal = False 
+        self.env_type = env_type
 
         self.data = dataframe.iloc[day]
 
@@ -30,7 +31,7 @@ class StockEnv(gym.Env):
 
         self.reward = 0
         self.cost = 0
-        self.turbulance = 0
+        self.turbulence = 0
         self.nb_trades = 0
 
         self.asset_mem = [INITIAL_ASSET]
@@ -42,24 +43,34 @@ class StockEnv(gym.Env):
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
         buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
 
-        # Sell stocks
-        for index in sell_index:
-            if actions[index] < 0:
-                amount = min(abs(actions[index]), self.state[index + NB_STOCK + 1])
+        if self.turbulence < self.turbulence_tresh or self.env_type == 'train':
+            # Sell stocks
+            for index in sell_index:
+                if actions[index] < 0:
+                    amount = min(abs(actions[index]), self.state[index + NB_STOCK + 1])
+                    self.state[0] += self.state[index + 1] * amount * (1 - TRANSACTION_FEE_PERCENT)
+                    self.state[index+NB_STOCK + 1] -= amount
+                    self.cost += self.state[index + 1] * amount * TRANSACTION_FEE_PERCENT
+                    self.trades += 1
+
+            # Buy stocks
+            for index in buy_index:
+                if actions[index] > 0:
+                    available_amount = self.state[0] // self.state[index + 1]
+                    amount = min(available_amount, actions[index])
+                    self.state[0] -= self.state[index + 1] * amount * (1 + TRANSACTION_FEE_PERCENT)
+                    self.state[index + NB_STOCK + 1] += amount
+                    self.cost += self.state[index + 1] * amount * TRANSACTION_FEE_PERCENT
+                    self.trades += 1
+        else:
+            # Sell all stocks
+            for index in sell_index:
+                amount = self.state[index + NB_STOCK + 1]
                 self.state[0] += self.state[index + 1] * amount * (1 - TRANSACTION_FEE_PERCENT)
-                self.state[index+NB_STOCK + 1] -= amount
+                self.state[index+NB_STOCK + 1] = 0
                 self.cost += self.state[index + 1] * amount * TRANSACTION_FEE_PERCENT
                 self.trades += 1
 
-        # Buy stocks
-        for index in buy_index:
-            if actions[index] > 0:
-                available_amount = self.state[0] // self.state[index + 1]
-                amount = min(available_amount, actions[index])
-                self.state[0] -= self.state[index + 1] * amount * (1 + TRANSACTION_FEE_PERCENT)
-                self.state[index + NB_STOCK + 1] += amount
-                self.cost += self.state[index + 1] * amount * TRANSACTION_FEE_PERCENT
-                self.trades += 1
 
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique()) - 1
