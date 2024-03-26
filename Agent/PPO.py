@@ -1,6 +1,5 @@
 import gym
 import numpy as np
-import time
 import torch
 import torch.nn as nn
 from torch.optim import Adam
