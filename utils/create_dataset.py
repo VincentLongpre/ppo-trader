@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from datetime import datetime, timedelta
 from ta.trend import MACD
 from ta.momentum import RSIIndicator
 from ta.trend import CCIIndicator
 from ta.trend import ADXIndicator
+from datetime import datetime, timedelta
 
 def get_ticker_data(start_date, end_date, ticker_list):
     all_data = []
