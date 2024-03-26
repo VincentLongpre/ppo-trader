@@ -1,15 +1,13 @@
-import gymnasium as gym
-import time
-
+import gym
 import numpy as np
 import time
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-
     def __init__(self, policy_class, env, lr, gamma, clip, n_updates):
 
         self.lr = lr                                # Learning rate of actor optimizer
@@ -53,7 +51,6 @@ class PPO:
         return V, log_prob
 
     def compute_G(self, batch_r):
-
         G = 0
         batch_G = []
 
@@ -67,7 +64,6 @@ class PPO:
         return batch_G
 
     def update(self, batch_r, batch_s, batch_a):
-
         V, old_log_prob = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
@@ -102,11 +98,6 @@ class PPO:
 	This file contains a neural network module for us to
 	define our actor and critic networks in PPO.
 """
-
-import torch
-from torch import nn
-import torch.nn.functional as F
-import numpy as np
 
 class FeedForwardNN(nn.Module):
     """
@@ -151,7 +142,6 @@ class FeedForwardNN(nn.Module):
 
 # function that runs each episode
 def episode(agent, n_episodes, max_iter = 1000):
-
     batch_r, batch_s, batch_a = [], [], []
 
     r_eps = []
@@ -197,7 +187,6 @@ def episode(agent, n_episodes, max_iter = 1000):
 
 # function that runs each hyperparameter setting
 def hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=1000):
-
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
@@ -215,18 +204,19 @@ def hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_u
 
     return reward_arr_train
 
-env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
-env = gym.make(env_name)
+if __name__ == "__main__":
+    env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
+    env = gym.make(env_name)
 
-learning_rates = [3e-4]
-gamma = 0.99
-clip = 0.2
-n_updates = 10
-n_episodes = 10
-max_iter = 200
+    learning_rates = [3e-4]
+    gamma = 0.99
+    clip = 0.2
+    n_updates = 10
+    n_episodes = 10
+    max_iter = 200
 
-policy_class = FeedForwardNN
+    policy_class = FeedForwardNN
 
-torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(True)
 
-reward_arr_train = hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=max_iter)
+    reward_arr_train = hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=max_iter)
