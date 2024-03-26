@@ -54,7 +54,7 @@ class StockEnv(gym.Env):
         # Buy stocks
         for index in buy_index:
             if actions[index] > 0:
-                available_amount = self.state[0] // self.state[index+1]
+                available_amount = self.state[0] // self.state[index + 1]
                 amount = min(available_amount, actions[index])
                 self.state[0] -= self.state[index + 1] * amount * (1 + TRANSACTION_FEE_PERCENT)
                 self.state[index + NB_STOCK + 1] += amount
