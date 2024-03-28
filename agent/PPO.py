@@ -46,6 +46,7 @@ class PPO:
 
         return V, log_prob
 
+class MCPPO(PPO):
     def compute_G(self, batch_r):
         G = 0
         batch_G = []
@@ -87,6 +88,39 @@ class PPO:
             self.critic_optim.zero_grad()
             critic_loss.backward()
             self.critic_optim.step()
+
+class TDPPO(PPO):
+    def update(self, s, a, r, next_s):
+        r = torch.tensor(r, dtype=torch.float)
+        s = torch.tensor(s, dtype=torch.float)
+        a = torch.tensor(a, dtype=torch.float)
+        next_s = torch.tensor(next_s, dtype=torch.float)
+
+        V, old_log_prob = self.evaluate(s, a)
+        old_log_prob = old_log_prob.detach()
+
+        with torch.no_grad():
+            next_V = self.critic(next_s).squeeze()
+            TD_target = r + self.gamma * next_V
+
+        critic_loss = nn.MSELoss()(V, TD_target.detach())
+
+        self.critic_optim.zero_grad()
+        critic_loss.backward()
+        self.critic_optim.step()
+
+        A = TD_target - V.detach()
+
+        for _ in range(self.n_updates):
+            V, log_prob = self.evaluate(s, a)
+            ratios = torch.exp(log_prob - old_log_prob)
+            term1 = ratios * A
+            term2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
+            actor_loss = (-torch.min(term1, term2)).mean()
+
+            self.actor_optim.zero_grad()
+            actor_loss.backward(retain_graph=True)
+            self.actor_optim.step()
 
 """
 	This file contains a neural network module for us to
@@ -135,7 +169,7 @@ class FeedForwardNN(nn.Module):
         return output
 
 # function that runs each episode
-def episode(agent, n_episodes, max_iter = 1000):
+def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     batch_r, batch_s, batch_a = [], [], []
 
     r_eps = []
@@ -162,6 +196,9 @@ def episode(agent, n_episodes, max_iter = 1000):
             batch_s.append(s)
             batch_a.append(a)
 
+            if not end_update:
+                agent.update(s, a , r, s_prime)
+
             s, a = s_prime, a_prime
 
             r_ep += r
@@ -174,7 +211,8 @@ def episode(agent, n_episodes, max_iter = 1000):
         r_eps.append(r_ep)
 
     batch_r, batch_s, batch_a = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float)
-    agent.update(batch_r, batch_s, batch_a)
+    if end_update:
+        agent.update(batch_r, batch_s, batch_a)
 
     return np.mean(r_eps)
 
@@ -184,11 +222,11 @@ def hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_u
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
-            print(f'temp_{lr}, for run_{run}')
-            agent = PPO(policy_class, env, lr, gamma, clip, n_updates)
+            print(f'lr_{lr}, for run_{run}')
+            agent = TDPPO(policy_class, env, lr, gamma, clip, n_updates)
 
             for ep in range(1000): # 100 is for debugging
-                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter)
+                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=False)
                 print(reward_arr_train[i, run, ep])
 
     return reward_arr_train
@@ -202,7 +240,7 @@ if __name__ == "__main__":
     clip = 0.2
     n_updates = 10
     n_episodes = 10
-    max_iter = 200
+    max_iter = 100
 
     policy_class = FeedForwardNN
 

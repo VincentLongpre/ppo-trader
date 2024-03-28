@@ -9,13 +9,12 @@ TRANSACTION_FEE_PERCENT = 0.01
 REWARD_SCALING = 1e-4
 
 class StockEnv(gym.Env):
-    def __init__(self, dataframe, day=0, turbulence_tresh=140, env_type="rain") -> None:
+    def __init__(self, dataframe, day=0, turbulence_tresh=140, env_type="train") -> None:
         self.day = day
         self.dataframe = dataframe
         self.turbulence_tresh = turbulence_tresh
         self.terminal = False 
         self.env_type = env_type
-
         self.data = dataframe.iloc[day]
 
         self.action_space = spaces.Box(-1, 1, (NB_STOCK,))
