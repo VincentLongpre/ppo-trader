@@ -37,7 +37,7 @@ class StockEnv(gym.Env):
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
         buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
 
-        if self.turbulence < self.turbulence_tresh or self.env_type == 'train':
+        if self.turbulence < self.turbulence_threshold or self.env_type == 'train':
             # Sell stocks
             for index in sell_index:
                 if actions[index] < 0:
@@ -67,9 +67,9 @@ class StockEnv(gym.Env):
 
 
     def step(self, actions):
-        self.terminal = self.day >= len(self.df.index.unique()) - 1
+        self.terminal = self.day >= len(self.dataframe.index.unique()) - 1
         if self.terminal:
-            # Create graphs and have fun
+            print(self.trades)
             pass
 
         else:
@@ -79,7 +79,7 @@ class StockEnv(gym.Env):
             self._execute_action(actions)
 
             self.day += 1
-            self.data = self.df.loc[self.day,:]
+            self.data = self.dataframe.loc[self.day,:]
             self.state = [self.state[0]] + \
                          self.data.adjcp.values.tolist() + \
                          list(self.state[(self.nb_stock  + 1):(self.nb_stock  * 2 + 1)]) + \
@@ -96,12 +96,12 @@ class StockEnv(gym.Env):
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
 
-        return self.state, self.reward, self.terminal, {}
+        return self.state, self.reward, self.terminal
     
     def reset(self):
         self.asset_memory = [self.initial_balance]
         self.day = 0
-        self.data = self.df.loc[self.day,:]
+        self.data = self.dataframe.loc[self.day,:]
         self.cost = 0
         self.trades = 0
         self.terminal = False 

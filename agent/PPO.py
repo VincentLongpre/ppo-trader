@@ -176,7 +176,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
     for _ in range(n_episodes):
 
-        (s, info) = agent.env.reset()
+        s = agent.env.reset()
 
         termination, truncation = False, False
 
@@ -188,7 +188,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
         # while not (termination or truncation):
         for _ in range(max_iter):
-            s_prime, r, termination, truncation, info = agent.env.step(a)
+            s_prime, r, termination = agent.env.step(a)
 
             a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
 
@@ -217,8 +217,8 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, **kwargs):
-    locals().update(kwargs)
+def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter):
+    print(n_updates)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
@@ -226,8 +226,8 @@ def hyperparams_run_gradient(agent_class, policy_class, env, **kwargs):
             print(f'lr_{lr}, for run_{run}')
             agent = agent_class(policy_class, env, lr, gamma, clip, n_updates)
 
-            for ep in range(1000): # 100 is for debugging
-                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=False)
+            for ep in range(100): # 100 is for debugging
+                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
                 print(reward_arr_train[i, run, ep])
 
     return reward_arr_train
@@ -241,7 +241,7 @@ if __name__ == "__main__":
     clip = 0.2
     n_updates = 1
     n_episodes = 10
-    max_iter = 100
+    max_iter = 1000
 
     policy_class = FeedForwardNN
 
