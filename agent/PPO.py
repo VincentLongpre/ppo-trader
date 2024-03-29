@@ -238,7 +238,7 @@ if __name__ == "__main__":
     learning_rates = [3e-4]
     gamma = 0.99
     clip = 0.2
-    n_updates = 10
+    n_updates = 1
     n_episodes = 10
     max_iter = 100
 
