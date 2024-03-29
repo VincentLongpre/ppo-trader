@@ -95,4 +95,4 @@ if __name__ == "__main__":
 
     dataset = create_dataset(start_date, end_date, ticker_list)
 
-    # dataset.to_csv('processed_dataset.csv')
+    dataset.to_csv('processed_dataset.csv', index=False)

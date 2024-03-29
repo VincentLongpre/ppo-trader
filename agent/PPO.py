@@ -218,6 +218,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
 # function that runs each hyperparameter setting
 def hyperparams_run_gradient(agent_class, policy_class, env, **kwargs):
+    locals().update(kwargs)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):

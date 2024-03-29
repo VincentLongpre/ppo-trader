@@ -10,7 +10,7 @@ class StockEnv(gym.Env):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.data = dataframe.iloc[self.day, :]
+        self.data = dataframe.loc[self.day, :]
 
         self.action_space = spaces.Box(-1, 1, (self.nb_stock,))
         self.observation_space = spaces.Box(0, np.inf, (6 * self.nb_stock + 1,))

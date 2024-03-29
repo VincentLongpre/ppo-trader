@@ -1,5 +1,5 @@
 learning_rates:
-  - 3e-4
+  - 0.0003
 gamma: 0.99
 clip: 0.2
 n_updates: 10
