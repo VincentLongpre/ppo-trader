@@ -1,0 +1,10 @@
+day: 0
+turbulence_threshold: 140
+iteration: ''
+hmax: 100
+initial_account_balance: 1000000
+stock_dim: 30
+transaction_fee_percent: 0.001
+reward_scaling: 1e-4
+seed: 42
+split: 'train'

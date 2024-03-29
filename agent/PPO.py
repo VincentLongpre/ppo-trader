@@ -215,18 +215,19 @@ def hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_u
 
     return reward_arr_train
 
-env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
-env = gym.make(env_name)
+if __name__ == "__main__":
+    env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
+    env = gym.make(env_name)
 
-learning_rates = [3e-4]
-gamma = 0.99
-clip = 0.2
-n_updates = 10
-n_episodes = 10
-max_iter = 200
+    learning_rates = [3e-4]
+    gamma = 0.99
+    clip = 0.2
+    n_updates = 10
+    n_episodes = 10
+    max_iter = 200
 
-policy_class = FeedForwardNN
+    policy_class = FeedForwardNN
 
-torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(True)
 
-reward_arr_train = hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=max_iter)
+    reward_arr_train = hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=max_iter)
