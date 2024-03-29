@@ -217,13 +217,13 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=1000):
+def hyperparams_run_gradient(agent_class, policy_class, env, **kwargs):
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = TDPPO(policy_class, env, lr, gamma, clip, n_updates)
+            agent = agent_class(policy_class, env, lr, gamma, clip, n_updates)
 
             for ep in range(1000): # 100 is for debugging
                 reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=False)
