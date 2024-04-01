@@ -1,6 +1,7 @@
 import numpy as np
 import gymnasium as gym
-from gym import spaces
+from gymnasium import spaces
+from gymnasium.utils import seeding
 
 class StockEnv(gym.Env):
     def __init__(self, dataframe, **kwargs) -> None:
@@ -33,6 +34,8 @@ class StockEnv(gym.Env):
 
     def _execute_action(self, actions):
         actions = actions * self.hmax
+        actions = actions.astype(int)
+
         argsort_actions = np.argsort(actions)
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
         buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
@@ -69,7 +72,7 @@ class StockEnv(gym.Env):
     def step(self, actions):
         self.terminal = self.day >= len(self.dataframe.index.unique()) - 1
         if self.terminal:
-            print(self.trades)
+            print(self.asset_memory[-1] - self.initial_balance)
             pass
 
         else:
@@ -96,9 +99,9 @@ class StockEnv(gym.Env):
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
 
-        return self.state, self.reward, self.terminal
+        return self.state, self.reward, self.terminal, False, {}
     
-    def reset(self):
+    def reset(self, seed=None, options=None,):
         self.asset_memory = [self.initial_balance]
         self.day = 0
         self.data = self.dataframe.loc[self.day,:]
@@ -115,4 +118,8 @@ class StockEnv(gym.Env):
             + self.data.cci.values.tolist() \
             + self.data.adx.values.tolist()
         
-        return self.state
+        return self.state, {}
+    
+    def _seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]

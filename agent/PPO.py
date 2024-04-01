@@ -164,7 +164,8 @@ class FeedForwardNN(nn.Module):
 
         activation1 = F.relu(self.layer1(obs))
         activation2 = F.relu(self.layer2(activation1))
-        output = self.layer3(activation2)
+        activation3 = F.relu(self.layer3(activation2))
+        output = self.layer3(activation3)
 
         return output
 
