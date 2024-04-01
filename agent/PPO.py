@@ -7,10 +7,11 @@ import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, n_updates):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
+        self.ent_coef = ent_coef
         self.n_updates = n_updates
 
         self.env = env
@@ -20,11 +21,13 @@ class PPO:
         self.actor = policy_class(self.s_dim, self.a_dim)
         self.critic = policy_class(self.s_dim, 1)
 
-        self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
-        self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
-
-        self.cov_var = torch.full(size=(self.a_dim,), fill_value=0.5)
+        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value=0.5))
         self.cov_mat = torch.diag(self.cov_var)
+
+        self.optimizer = torch.optim.Adam(
+            list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var],
+            lr=lr
+        )
 
     def select_action(self, s):
         mean = self.actor(s)
@@ -42,9 +45,11 @@ class PPO:
 
         mean = self.actor(batch_s)
         dist = MultivariateNormal(mean, self.cov_mat)
-        log_prob = dist.log_prob(batch_a)
 
-        return V, log_prob
+        log_prob = dist.log_prob(batch_a)
+        entropy = dist.entropy()
+
+        return V, log_prob, entropy
 
 class MCPPO(PPO):
     def compute_G(self, batch_r):
@@ -71,7 +76,7 @@ class MCPPO(PPO):
         A = (A - A.mean())/(A.std() + 1e-10)
 
         for _ in range(self.n_updates):
-            V, log_prob = self.evaluate(batch_s, batch_a)
+            V, log_prob, entropy = self.evaluate(batch_s, batch_a)
 
             ratios = torch.exp(log_prob - old_log_prob)
 
@@ -80,14 +85,11 @@ class MCPPO(PPO):
 
             actor_loss = (-torch.min(term1, term2)).mean()
             critic_loss = nn.MSELoss()(V, batch_G)
+            loss = actor_loss + critic_loss + self.ent_coef * entropy.mean()
 
-            self.actor_optim.zero_grad()
-            actor_loss.backward(retain_graph=True)
-            self.actor_optim.step()
-
-            self.critic_optim.zero_grad()
-            critic_loss.backward()
-            self.critic_optim.step()
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
 
 class TDPPO(PPO):
     def update(self, s, a, r, next_s):
