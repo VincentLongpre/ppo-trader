@@ -34,7 +34,8 @@ class PPO:
 
         dist = MultivariateNormal(mean, self.cov_mat)
 
-        a = dist.sample()
+        #change to low and high bound
+        a = torch.clamp(dist.sample(), -1, 1)
 
         log_prob = dist.log_prob(a)
 
@@ -65,7 +66,7 @@ class MCPPO(PPO):
         return batch_G
 
     def update(self, batch_r, batch_s, batch_a):
-        V, old_log_prob = self.evaluate(batch_s, batch_a)
+        V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
@@ -166,8 +167,7 @@ class FeedForwardNN(nn.Module):
 
         activation1 = F.relu(self.layer1(obs))
         activation2 = F.relu(self.layer2(activation1))
-        activation3 = F.relu(self.layer3(activation2))
-        output = self.layer3(activation3)
+        output = self.layer3(activation2)
 
         return output
 
@@ -179,7 +179,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
     for _ in range(n_episodes):
 
-        s = agent.env.reset()
+        s, _ = agent.env.reset()
 
         termination, truncation = False, False
 
@@ -191,7 +191,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
         # while not (termination or truncation):
         for _ in range(max_iter):
-            s_prime, r, termination = agent.env.step(a)
+            s_prime, r, termination, _, _ = agent.env.step(a)
 
             a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
 
@@ -220,16 +220,16 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter):
+def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, n_updates, n_episodes, max_iter):
     print(n_updates)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, n_updates)
+            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, n_updates)
 
-            for ep in range(100): # 100 is for debugging
+            for ep in range(1000): # 100 is for debugging
                 reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
                 print(reward_arr_train[i, run, ep])
 

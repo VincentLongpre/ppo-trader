@@ -17,5 +17,4 @@ if __name__ == "__main__":
 
     env = StockEnv(dataset, **env_configs)
 
-    model = PPO('MlpPolicy', env, ent_coef = 0.005)
-    model.learn(total_timesteps=1000000, progress_bar=True)
+    hyperparams_run_gradient(MCPPO, FeedForwardNN, env, **ppo_configs)
