@@ -21,7 +21,7 @@ class PPO:
         self.actor = policy_class(self.s_dim, self.a_dim)
         self.critic = policy_class(self.s_dim, 1)
 
-        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value=0.5))
+        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value=1.0))
         self.cov_mat = torch.diag(self.cov_var)
 
         self.optimizer = torch.optim.Adam(
@@ -34,17 +34,20 @@ class PPO:
 
         dist = MultivariateNormal(mean, self.cov_mat)
 
-        #change to low and high bound
-        a = torch.clamp(dist.sample(), -1, 1)
+        a = dist.sample()
 
         log_prob = dist.log_prob(a)
 
-        return a.detach().numpy(), log_prob.detach()
+        #change to low and high bound
+        a = torch.clamp(a, -1, 1).detach().numpy()
+
+        return a, log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
         V = self.critic(batch_s).squeeze()
 
         mean = self.actor(batch_s)
+        print(mean)
         dist = MultivariateNormal(mean, self.cov_mat)
 
         log_prob = dist.log_prob(batch_a)
@@ -81,8 +84,8 @@ class MCPPO(PPO):
 
             ratios = torch.exp(log_prob - old_log_prob)
 
-            term1 = ratios*A
-            term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip)*A
+            term1 = ratios * A
+            term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * A
 
             actor_loss = (-torch.min(term1, term2)).mean()
             critic_loss = nn.MSELoss()(V, batch_G)
