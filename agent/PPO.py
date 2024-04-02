@@ -7,11 +7,12 @@ import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, n_updates):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
         self.ent_coef = ent_coef
+        self.critic_factor = critic_factor
         self.n_updates = n_updates
 
         self.env = env
@@ -47,7 +48,6 @@ class PPO:
         V = self.critic(batch_s).squeeze()
 
         mean = self.actor(batch_s)
-        print(mean)
         dist = MultivariateNormal(mean, self.cov_mat)
 
         log_prob = dist.log_prob(batch_a)
@@ -89,7 +89,7 @@ class MCPPO(PPO):
 
             actor_loss = (-torch.min(term1, term2)).mean()
             critic_loss = nn.MSELoss()(V, batch_G)
-            loss = actor_loss + critic_loss + self.ent_coef * entropy.mean()
+            loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -223,14 +223,14 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, n_updates, n_episodes, max_iter):
+def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, n_updates, n_episodes, max_iter):
     print(n_updates)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, n_updates)
+            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, n_updates)
 
             for ep in range(1000): # 100 is for debugging
                 reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
