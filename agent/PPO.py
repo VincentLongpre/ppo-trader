@@ -13,6 +13,7 @@ class PPO:
         self.clip = clip
         self.ent_coef = ent_coef
         self.critic_factor = critic_factor
+        self.max_grad_norm = max_grad_norm
         self.n_updates = n_updates
 
         self.env = env
@@ -82,7 +83,7 @@ class MCPPO(PPO):
         for _ in range(self.n_updates):
             V, log_prob, entropy = self.evaluate(batch_s, batch_a)
 
-            ratios = torch.exp(log_prob - old_log_prob)
+            ratios = torch.exp(log_prob - old_log_prob).detach()
 
             term1 = ratios * A
             term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * A
