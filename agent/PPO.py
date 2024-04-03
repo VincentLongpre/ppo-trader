@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
@@ -93,6 +93,7 @@ class MCPPO(PPO):
 
             self.optimizer.zero_grad()
             loss.backward()
+            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
             self.optimizer.step()
 
 class TDPPO(PPO):
@@ -223,14 +224,14 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, n_updates, n_episodes, max_iter):
+def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
     print(n_updates)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, n_updates)
+            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
             for ep in range(1000): # 100 is for debugging
                 reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)

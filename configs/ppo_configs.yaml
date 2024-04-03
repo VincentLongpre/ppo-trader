@@ -4,6 +4,7 @@ gamma: 0.99
 clip: 0.2
 ent_coef: 0.2
 critic_factor: 0.5
-n_updates: 1
+max_grad_norm: 0.5
+n_updates: 10
 n_episodes: 10
 max_iter: 10000
