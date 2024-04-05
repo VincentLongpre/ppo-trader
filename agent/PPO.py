@@ -1,6 +1,8 @@
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
+import yaml
+import json
 import torch.nn as nn
 from torch.optim import Adam
 import torch.nn.functional as F
@@ -41,9 +43,11 @@ class PPO:
         log_prob = dist.log_prob(a)
 
         #change to low and high bound
-        a = torch.clamp(a, -1, 1).detach().numpy()
+        low_bound = self.env.action_space.low[0]
+        high_bound = self.env.action_space.high[0]
+        a = torch.clamp(a, low_bound, high_bound)
 
-        return a, log_prob.detach()
+        return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
         V = self.critic(batch_s).squeeze()
@@ -83,7 +87,7 @@ class MCPPO(PPO):
         for _ in range(self.n_updates):
             V, log_prob, entropy = self.evaluate(batch_s, batch_a)
 
-            ratios = torch.exp(log_prob - old_log_prob).detach()
+            ratios = torch.exp(log_prob - old_log_prob)
 
             term1 = ratios * A
             term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * A
@@ -96,6 +100,14 @@ class MCPPO(PPO):
             loss.backward()
             nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
             self.optimizer.step()
+
+            # self.actor_optim.zero_grad()
+            # actor_loss.backward()
+            # self.actor_optim.step()
+
+            # self.critic_optim.zero_grad()
+            # critic_loss.backward()
+            # self.critic_optim.step()
 
 class TDPPO(PPO):
     def update(self, s, a, r, next_s):
@@ -226,33 +238,46 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
 # function that runs each hyperparameter setting
 def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
-    print(n_updates)
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
-        for run in range(1): # 50, 1 is for debugging
+        for run in range(10): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
             agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
-            for ep in range(1000): # 100 is for debugging
+            for ep in range(100): # 100 is for debugging
                 reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
                 print(reward_arr_train[i, run, ep])
 
     return reward_arr_train
 
+def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
+    
+    for run in range(10): # 50, 1 is for debugging
+        reward_arr_train = np.zeros((100))
+        agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
+
+        for ep in range(100): # 100 is for debugging
+            reward_arr_train[ep] = episode(agent, n_episodes, max_iter, end_update=True)
+
+        with open(save_path + f"mcppo_{run}.json", 'w') as f:
+            json.dump(reward_arr_train.tolist(), f)
+
+    return reward_arr_train
+
 if __name__ == "__main__":
+    from stable_baselines3 import PPO
     env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
     env = gym.make(env_name)
 
-    learning_rates = [3e-4]
-    gamma = 0.99
-    clip = 0.2
-    n_updates = 1
-    n_episodes = 10
-    max_iter = 1000
+    with open("configs/ppo_configs.yaml", 'r') as f:
+        ppo_configs = yaml.safe_load(f)
 
-    policy_class = FeedForwardNN
+    with open("configs/env_configs.yaml", 'r') as f:
+        env_configs = yaml.safe_load(f)
 
-    torch.autograd.set_detect_anomaly(True)
+    ppo_configs['learning_rates'] = [0.0003]
 
-    reward_arr_train = hyperparams_run_gradient(policy_class, env, learning_rates, gamma, clip, n_updates, n_episodes, max_iter=max_iter)
+    hyperparams_run_gradient(MCPPO, FeedForwardNN, env, **ppo_configs)
+    # model = PPO('MlpPolicy', env, verbose=1)
+    # model.learn(total_timesteps=200000, progress_bar=True)
