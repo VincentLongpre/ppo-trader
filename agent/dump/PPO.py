@@ -1,19 +1,20 @@
-import gym
+import gymnasium as gym
+import time
+
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class_actor, policy_class_critic, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
+
+    def __init__(self, policy_class_actor, policy_class_critic, env, lr, gamma, clip, n_updates):
+
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
-        self.ent_coef = ent_coef
-        self.critic_factor = critic_factor
-        self.max_grad_norm = max_grad_norm
         self.n_updates = n_updates
 
         self.env = env
@@ -23,46 +24,42 @@ class PPO:
         self.actor = policy_class_actor(self.s_dim, self.a_dim)
         self.critic = policy_class_critic(self.s_dim, 1)
 
-        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value= 1.0))
+        self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
+        self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
+
+        self.cov_var = torch.full(size=(self.a_dim,), fill_value=0.1)
         self.cov_mat = torch.diag(self.cov_var)
 
-        self.optimizer = torch.optim.Adam(
-            list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var],
-            lr=lr
-        )
-
     def select_action(self, s):
-        mean = self.actor(s) # torch.clamp(
+
+        mean = self.actor(s)
 
         dist = MultivariateNormal(mean, self.cov_mat)
 
-        a = dist.sample()
+        a = dist.sample() # torch.clamp(, min=-1, max=1)
 
         log_prob = dist.log_prob(a)
 
-        #change to low and high bound
-        a = torch.clamp(a, -1, 1).detach().numpy()
-
-        return a, log_prob.detach()
+        return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
+
         V = self.critic(batch_s).squeeze()
 
-        mean = self.actor(batch_s) # torch.clamp(
+        mean = self.actor(batch_s)
         dist = MultivariateNormal(mean, self.cov_mat)
-
         log_prob = dist.log_prob(batch_a)
-        entropy = dist.entropy()
 
-        return V, log_prob, entropy
+        return V, log_prob
 
-class MCPPO(PPO):
     def compute_G(self, batch_r):
+
         G = 0
         batch_G = []
 
         for r in reversed(batch_r):
-            G = r + self.gamma * G
+
+            G = r + self.gamma*G
             batch_G.insert(0, G)
 
         batch_G = torch.tensor(batch_G, dtype=torch.float)
@@ -70,7 +67,8 @@ class MCPPO(PPO):
         return batch_G
 
     def update(self, batch_r, batch_s, batch_a):
-        V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
+
+        V, old_log_prob = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
@@ -80,60 +78,37 @@ class MCPPO(PPO):
 
         A = (A - A.mean())/(A.std() + 1e-10)
 
-        for _ in range(self.n_updates):
-            V, log_prob, entropy = self.evaluate(batch_s, batch_a)
+        for i in range(self.n_updates):
 
-            ratios = torch.exp(log_prob - old_log_prob)
+            V, log_prob = self.evaluate(batch_s, batch_a)
 
-            term1 = ratios * A
-            term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * A
+            ratios = torch.exp(log_prob - old_log_prob + 1e-10)
+
+            term1 = ratios*A
+            term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip)*A
 
             actor_loss = (-torch.min(term1, term2)).mean()
             critic_loss = nn.MSELoss()(V, batch_G)
-            loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
-            self.optimizer.step()
-
-class TDPPO(PPO):
-    def update(self, s, a, r, next_s):
-        r = torch.tensor(r, dtype=torch.float)
-        s = torch.tensor(s, dtype=torch.float)
-        a = torch.tensor(a, dtype=torch.float)
-        next_s = torch.tensor(next_s, dtype=torch.float)
-
-        V, old_log_prob = self.evaluate(s, a)
-        old_log_prob = old_log_prob.detach()
-
-        with torch.no_grad():
-            next_V = self.critic(next_s).squeeze()
-            TD_target = r + self.gamma * next_V
-
-        critic_loss = nn.MSELoss()(V, TD_target.detach())
-
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        self.critic_optim.step()
-
-        A = TD_target - V.detach()
-
-        for _ in range(self.n_updates):
-            V, log_prob = self.evaluate(s, a)
-            ratios = torch.exp(log_prob - old_log_prob).detach()
-            term1 = ratios * A
-            term2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
-            actor_loss = (-torch.min(term1, term2)).mean()
 
             self.actor_optim.zero_grad()
             actor_loss.backward(retain_graph=True)
+            # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1)
             self.actor_optim.step()
+
+            self.critic_optim.zero_grad()
+            critic_loss.backward()
+            # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
+            self.critic_optim.step()
 
 """
 	This file contains a neural network module for us to
 	define our actor and critic networks in PPO.
 """
+
+import torch
+from torch import nn
+import torch.nn.functional as F
+import numpy as np
 
 class FeedForwardNN_Actor(nn.Module):
     """
@@ -222,14 +197,15 @@ class FeedForwardNN_Critic(nn.Module):
         return output
 
 # function that runs each episode
-def episode(agent, n_batch, max_iter = 1000, end_update=True):
+def episode(agent, n_batch, max_iter = 1000):
+
     batch_r, batch_s, batch_a = [], [], []
 
     r_eps = []
 
-    for _ in range(n_batch):
+    for i in range(n_batch):
 
-        s, _ = agent.env.reset()
+        (s, info) = agent.env.reset()
 
         termination, truncation = False, False
 
@@ -240,17 +216,15 @@ def episode(agent, n_batch, max_iter = 1000, end_update=True):
         t = 0
 
         # while not (termination or truncation):
-        for _ in range(max_iter):
-            s_prime, r, termination, _, _ = agent.env.step(a)
+        for j in range(max_iter):
+
+            s_prime, r, termination, truncation, info = agent.env.step(a)
 
             a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
 
             batch_r.append(r)
             batch_s.append(s)
             batch_a.append(a)
-
-            if not end_update:
-                agent.update(s, a , r, s_prime)
 
             s, a = s_prime, a_prime
 
@@ -263,26 +237,27 @@ def episode(agent, n_batch, max_iter = 1000, end_update=True):
 
         r_eps.append(r_ep)
 
-    batch_r, batch_s, batch_a = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float)
-    if end_update:
-        agent.update(batch_r, batch_s, batch_a)
-
+    batch_r, batch_s, batch_a = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float)
+    agent.update(batch_r, batch_s, batch_a)
+    print(batch_a)
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class_actor, policy_class_critic, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_batch, max_iter):
+def hyperparams_run_gradient(policy_class_actor, policy_class_critic, env, learning_rates, gamma, clip, n_updates, n_batch, max_iter=1000):
 
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
+
         for run in range(1): # 50, 1 is for debugging
-            print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class_actor, policy_class_critic, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
+            print(f'temp_{lr}, for run_{run}')
+
+            agent = PPO(policy_class_actor, policy_class_critic, env, lr, gamma, clip, n_updates)
 
             for ep in range(1000): # 100 is for debugging
-                reward_arr_train[i, run, ep] = episode(agent, n_batch, max_iter, end_update=True)
-                # print(agent.cov_var)
-                print(ep)
+
+                reward_arr_train[i, run, ep] = episode(agent, n_batch, max_iter)
+                print(reward_arr_train[i, run, ep])
 
     return reward_arr_train
 
@@ -293,16 +268,13 @@ if __name__ == "__main__":
     learning_rates = [3e-4]
     gamma = 0.99
     clip = 0.2
-    ent_coef = 0.0
-    critic_factor = 0.5
-    max_grad_norm = 1.0
     n_updates = 10
     n_batch = 10
     max_iter = 200
+    end_update = False
 
-    agent_class = MCPPO
     policy_class = FeedForwardNN
 
     torch.autograd.set_detect_anomaly(True)
 
-    reward_arr_train = hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_batch, max_iter=max_iter)
+    reward_arr_train = hyperparams_run_gradient(policy_class_actor, policy_class_critic, env, learning_rates, gamma, clip, n_updates, n_batch, max_iter=max_iter)

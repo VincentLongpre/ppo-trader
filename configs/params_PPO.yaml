@@ -1,7 +1,10 @@
 learning_rates:
-  - 3e-4
+  - 0.0003
 gamma: 0.99
 clip: 0.2
+ent_coef: 0
+critic_factor: 0.5
+max_grad_norm: 1
 n_updates: 10
-n_episodes: 10
-max_iter: 200
+n_batch: 1
+max_iter: 2048

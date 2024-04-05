@@ -1,5 +1,5 @@
 import numpy as np
-import gymnasium as gym
+import gym # gymnasium as gym
 from gym import spaces
 
 
@@ -101,7 +101,7 @@ class StockEnv(gym.Env):
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
 
-        return self.state, self.reward, self.terminal, False, {}
+        return self.state, self.reward, self.terminal, {} # , False, {}
 
     def reset(self):
         self.asset_memory = [self.initial_balance]
@@ -120,4 +120,4 @@ class StockEnv(gym.Env):
                      + self.data.cci.values.tolist() \
                      + self.data.adx.values.tolist()
 
-        return self.state, {}
+        return self.state # , {}
