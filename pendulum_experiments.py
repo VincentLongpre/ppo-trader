@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 from agent.PPO import MCPPO, FeedForwardNN, run_trials
+from agent.PPO_Original import PPO as OPPO
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 import matplotlib.pyplot as plt
@@ -17,15 +18,15 @@ def plot_learning_curves(save_path):
         file_path = os.path.join(save_path, file)
 
         if file.endswith('.csv'):
-            df = pd.read_csv(file_path)
-            ppo_returns.append(df['reward'].to_list())
+            df = pd.read_csv(file_path, skiprows=1)
+            ppo_returns.append(df['r'].values.tolist())
 
         elif file.endswith('.json'):
             df = pd.read_json(file_path)
-            mcppo_returns.append(df.to_list())
+            mcppo_returns.append(df.values.tolist())
 
+    mcppo_returns = np.array(mcppo_returns).squeeze()
     ppo_returns = np.array(ppo_returns)
-    mcppo_returns = np.array(mcppo_returns)
 
     # Calculate mean and standard deviation
     ppo_mean_reward = np.mean(ppo_returns, axis=0)
@@ -49,7 +50,6 @@ def plot_learning_curves(save_path):
 
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.title('Learning Curves')
     plt.legend()
     plt.show()
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         with open("configs/env_configs.yaml", 'r') as f:
             env_configs = yaml.safe_load(f)
 
-        run_trials(MCPPO, FeedForwardNN, env, save_path, **ppo_configs)
+        run_trials(OPPO, FeedForwardNN, env, save_path, **ppo_configs)
 
         for run in range(10):
             env = make_vec_env(env_name, monitor_dir=save_path)

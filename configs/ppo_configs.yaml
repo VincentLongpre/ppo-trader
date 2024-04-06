@@ -4,6 +4,6 @@ clip: 0.2
 ent_coef: 0.0
 critic_factor: 0.5
 max_grad_norm: 0.5
-n_updates: 5
+n_updates: 10
 n_episodes: 10
 max_iter: 200

@@ -165,8 +165,13 @@ class FeedForwardNN(nn.Module):
         super(FeedForwardNN, self).__init__()
 
         self.layer1 = nn.Linear(in_dim, 64)
+        self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
         self.layer3 = nn.Linear(64, out_dim)
+
+        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
 
     def forward(self, obs):
         """
@@ -182,8 +187,8 @@ class FeedForwardNN(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.layer1(obs))
-        activation2 = F.relu(self.layer2(activation1))
+        activation1 = F.tanh(self.ln1(self.layer1(obs)))
+        activation2 = F.tanh(self.layer2(activation1))
         output = self.layer3(activation2)
 
         return output
@@ -234,7 +239,7 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
     if end_update:
         agent.update(batch_r, batch_s, batch_a)
 
-    return np.mean(r_eps)
+    return r_eps
 
 # function that runs each hyperparameter setting
 def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
@@ -245,21 +250,24 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
             print(f'lr_{lr}, for run_{run}')
             agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
+            ep_rewards = []
             for ep in range(100): # 100 is for debugging
-                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
-                print(reward_arr_train[i, run, ep])
+                ep_rewards.extend(episode(agent, n_episodes, max_iter, end_update=True))
+
+            reward_arr_train[i, run, :] = ep_rewards
 
     return reward_arr_train
 
 def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
     
     for run in range(10): # 50, 1 is for debugging
-        reward_arr_train = np.zeros((100))
+        reward_arr_train = []
         agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
-        for ep in range(100): # 100 is for debugging
-            reward_arr_train[ep] = episode(agent, n_episodes, max_iter, end_update=True)
+        for ep in range(500): # 100 is for debugging
+            reward_arr_train.extend(episode(agent, n_episodes, max_iter, end_update=True))
 
+        reward_arr_train = np.array(reward_arr_train)
         with open(save_path + f"mcppo_{run}.json", 'w') as f:
             json.dump(reward_arr_train.tolist(), f)
 
