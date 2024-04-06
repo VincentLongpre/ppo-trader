@@ -57,6 +57,7 @@ cover/
 
 # Datasets
 *.csv
+*.json
 
 # Django stuff:
 *.log

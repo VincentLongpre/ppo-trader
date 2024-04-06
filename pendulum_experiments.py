@@ -2,20 +2,10 @@ import gymnasium as gym
 import yaml
 import json
 import numpy as np
+import os
 from agent.PPO import MCPPO, FeedForwardNN, run_trials
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
-
-class RewardCallback(BaseCallback):
-    def __init__(self, verbose=0):
-        super(RewardCallback, self).__init__(verbose)
-        self.rewards = []
-
-    def _on_step(self) -> bool:
-        # Retrieve the current reward and append it to the rewards list
-        current_reward = self.model.ep_info_buffer[0]["r"]
-        self.rewards.append(current_reward)
-        return True
+from stable_baselines3.common.env_util import make_vec_env
 
 if __name__ == "__main__":
     save_path = "runs/pendulum/"
@@ -28,18 +18,13 @@ if __name__ == "__main__":
     with open("configs/env_configs.yaml", 'r') as f:
         env_configs = yaml.safe_load(f)
 
-    run_trials(MCPPO, FeedForwardNN, env, save_path, **ppo_configs)
+    # run_trials(MCPPO, FeedForwardNN, env, save_path, **ppo_configs)
+
+    env = make_vec_env(env_name, monitor_dir=save_path)
 
     for run in range(10):
-        model = PPO('MlpPolicy', env, verbose=1)
-
-        reward_callback = RewardCallback()
-
-        model.learn(total_timesteps=200000, callback=reward_callback, progress_bar=True)
-
-        reward_arr_train = np.array(reward_callback.rewards).tolist()
-
-        with open(save_path + f"ppo_{run}.json", 'w') as f:
-            json.dump(reward_arr_train, f)
+        model = PPO('MlpPolicy', env)
+        model.learn(total_timesteps=200000, progress_bar=True)
+        os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
 
     
