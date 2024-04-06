@@ -2,7 +2,7 @@ import pandas as pd
 from preprocessor.utils import data_split
 import numpy as np
 from env import stockEnv
-from agent import PPO
+from agent import PPO_GAE as PPO
 import torch
 import yaml
 
