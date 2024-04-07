@@ -33,14 +33,20 @@ $ git clone https://github.com/your_username/your_project.git
 ```sh
 $ pip install -r requirements.txt
 ```
-3. Set up the environments: Follow instructions in the environments/README.md file
+3. Create the dataset:
+```sh
+$ python utils/create_dataset.py
+```
+to generate the dataset required for the custom stock environment.
 
 ## Usage
 
 To use the project, follow these steps:
 
-1. Train the agents: Run `python train.py` with appropriate parameters
-2. Evaluate performance: Run `python evaluate.py` to compare performance metrics
+1. Train the agents on the StockEnv environment using [`train.py`](train.py) with appropriate parameters.
+2. Evaluate performance on the StockEnv environment using [`evaluate.py`](evaluate.py) to compare performance metrics.
+3. Perform experiments on the Pendulum environment using [`pendulum_experiments.py`](pendulum_experiments.py) to train and evaluate agents.
+4. Modify model and environment configurations in the [`configs`](configs) folder as needed for custom experiments and configurations.
 
 ## Contributing
 
