@@ -39,18 +39,18 @@ def plot_learning_curves(save_path):
     plt.fill_between(range(len(ppo_mean_reward)),
                      ppo_mean_reward - ppo_std_reward,
                      ppo_mean_reward + ppo_std_reward,
-                     alpha=0.3)
+                     alpha=0.5)
 
     # Plot MC-PPO
     plt.plot(mcppo_mean_reward, label="Ours")
     plt.fill_between(range(len(mcppo_mean_reward)),
                      mcppo_mean_reward - mcppo_std_reward,
                      mcppo_mean_reward + mcppo_std_reward,
-                     alpha=0.3)
+                     alpha=0.5)
 
     plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.legend()
+    plt.ylabel('Average Episodic Return')
+    plt.legend(loc='lower right')
     plt.show()
 
 
@@ -69,11 +69,11 @@ if __name__ == "__main__":
 
         run_trials(OPPO, FeedForwardNN, env, save_path, **ppo_configs)
 
-        for run in range(10):
-            env = make_vec_env(env_name, monitor_dir=save_path)
-            model = PPO('MlpPolicy', env)
-            model.learn(total_timesteps=200000, progress_bar=True)
-            os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
+        # for run in range(6, 10):
+        #     env = make_vec_env(env_name, monitor_dir=save_path)
+        #     model = PPO('MlpPolicy', env)
+        #     model.learn(total_timesteps=1000000, progress_bar=True)
+        #     os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
 
     plot_learning_curves(save_path)
 
