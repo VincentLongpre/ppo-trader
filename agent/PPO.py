@@ -2,11 +2,11 @@ import gymnasium as gym
 import numpy as np
 import torch
 import yaml
-import json
 import torch.nn as nn
 from torch.optim import Adam
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
+from utils.run_episode import hyperparams_run_gradient
 
 class PPO:
     def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
@@ -60,7 +60,6 @@ class PPO:
 
         return V, log_prob, entropy
 
-class MCPPO(PPO):
     def compute_G(self, batch_r):
         G = 0
         batch_G = []
@@ -108,39 +107,6 @@ class MCPPO(PPO):
             # self.critic_optim.zero_grad()
             # critic_loss.backward()
             # self.critic_optim.step()
-
-class TDPPO(PPO):
-    def update(self, s, a, r, next_s):
-        r = torch.tensor(r, dtype=torch.float)
-        s = torch.tensor(s, dtype=torch.float)
-        a = torch.tensor(a, dtype=torch.float)
-        next_s = torch.tensor(next_s, dtype=torch.float)
-
-        V, old_log_prob = self.evaluate(s, a)
-        old_log_prob = old_log_prob.detach()
-
-        with torch.no_grad():
-            next_V = self.critic(next_s).squeeze()
-            TD_target = r + self.gamma * next_V
-
-        critic_loss = nn.MSELoss()(V, TD_target.detach())
-
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        self.critic_optim.step()
-
-        A = TD_target - V.detach()
-
-        for _ in range(self.n_updates):
-            V, log_prob = self.evaluate(s, a)
-            ratios = torch.exp(log_prob - old_log_prob)
-            term1 = ratios * A
-            term2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
-            actor_loss = (-torch.min(term1, term2)).mean()
-
-            self.actor_optim.zero_grad()
-            actor_loss.backward(retain_graph=True)
-            self.actor_optim.step()
 
 """
 	This file contains a neural network module for us to
@@ -193,88 +159,8 @@ class FeedForwardNN(nn.Module):
 
         return output
 
-# function that runs each episode
-def episode(agent, n_episodes, max_iter = 1000, end_update=True):
-    batch_r, batch_s, batch_a = [], [], []
-
-    r_eps = []
-
-    for _ in range(n_episodes):
-
-        s, _ = agent.env.reset()
-
-        termination, truncation = False, False
-
-        a, _ = agent.select_action(torch.tensor(s, dtype=torch.float))
-
-        r_ep = 0
-
-        t = 0
-
-        # while not (termination or truncation):
-        for _ in range(max_iter):
-            s_prime, r, termination, _, _ = agent.env.step(a)
-
-            a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
-
-            batch_r.append(r)
-            batch_s.append(s)
-            batch_a.append(a)
-
-            if not end_update:
-                agent.update(s, a , r, s_prime)
-
-            s, a = s_prime, a_prime
-
-            r_ep += r
-
-            t += 1
-
-            if termination:
-                break
-
-        r_eps.append(r_ep)
-
-    batch_r, batch_s, batch_a = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float)
-    if end_update:
-        agent.update(batch_r, batch_s, batch_a)
-
-    return r_eps
-
-# function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
-    reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
-
-    for i, lr in enumerate(learning_rates):
-        for run in range(10): # 50, 1 is for debugging
-            print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
-
-            ep_rewards = []
-            for ep in range(100): # 100 is for debugging
-                ep_rewards.extend(episode(agent, n_episodes, max_iter, end_update=True))
-
-            reward_arr_train[i, run, :] = ep_rewards
-
-    return reward_arr_train
-
-def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
-    
-    for run in range(10): # 50, 1 is for debugging
-        reward_arr_train = []
-        agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
-
-        for ep in range(500): # 100 is for debugging
-            reward_arr_train.extend(episode(agent, n_episodes, max_iter, end_update=True))
-
-        reward_arr_train = np.array(reward_arr_train)
-        with open(save_path + f"mcppo_{run}.json", 'w') as f:
-            json.dump(reward_arr_train.tolist(), f)
-
-    return reward_arr_train
-
 if __name__ == "__main__":
-    from stable_baselines3 import PPO
+    from stable_baselines3 import PPO as BPPO
     env_name = 'Pendulum-v1' # 'CartPole-v1' # 'MountainCar-v0'
     env = gym.make(env_name)
 
@@ -286,6 +172,6 @@ if __name__ == "__main__":
 
     ppo_configs['learning_rates'] = [0.0003]
 
-    hyperparams_run_gradient(MCPPO, FeedForwardNN, env, **ppo_configs)
-    # model = PPO('MlpPolicy', env, verbose=1)
+    hyperparams_run_gradient(PPO, FeedForwardNN, env, **ppo_configs)
+    # model = BPPO('MlpPolicy', env, verbose=1)
     # model.learn(total_timesteps=200000, progress_bar=True)

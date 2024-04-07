@@ -4,9 +4,9 @@ import json
 import numpy as np
 import pandas as pd
 import os
-from agent.PPO import MCPPO, FeedForwardNN, run_trials
-from agent.PPO_Original import PPO as OPPO
-from stable_baselines3 import PPO
+from agent.PPO import PPO, FeedForwardNN
+from utils.run_episode import run_trials
+from stable_baselines3 import PPO as BPPO
 from stable_baselines3.common.env_util import make_vec_env
 import matplotlib.pyplot as plt
 
@@ -55,7 +55,7 @@ def plot_learning_curves(save_path):
 
 
 if __name__ == "__main__":
-    save_path = "runs/pendulum/"
+    save_path = "runs1/pendulum/"
     env_name = 'Pendulum-v1'
     env = gym.make(env_name)
     training = True
@@ -67,11 +67,11 @@ if __name__ == "__main__":
         with open("configs/env_configs.yaml", 'r') as f:
             env_configs = yaml.safe_load(f)
 
-        run_trials(OPPO, FeedForwardNN, env, save_path, **ppo_configs)
+        run_trials(PPO, FeedForwardNN, env, save_path, **ppo_configs)
 
         # for run in range(6, 10):
         #     env = make_vec_env(env_name, monitor_dir=save_path)
-        #     model = PPO('MlpPolicy', env)
+        #     model = BPPO('MlpPolicy', env)
         #     model.learn(total_timesteps=1000000, progress_bar=True)
         #     os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
 
