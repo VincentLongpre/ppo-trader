@@ -24,7 +24,7 @@ class PPO:
         self.actor = policy_class_actor(self.s_dim, self.a_dim)
         self.critic = policy_class_critic(self.s_dim, 1)
 
-        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value= 0.1))
+        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value= 1.0))
         self.cov_mat = torch.diag(self.cov_var)
 
         self.optimizer = torch.optim.Adam(
@@ -95,12 +95,11 @@ class MCPPO(PPO):
 
         old_log_prob = old_log_prob.detach()
 
+        batch_G, A = self.compute_G(batch_r, batch_terminal, V)
+        A = (A - A.mean()) / (A.std() + 1e-10)
+
         for _ in range(self.n_updates):
             V, log_prob, entropy = self.evaluate(batch_s, batch_a)
-
-            batch_G, A = self.compute_G(batch_r, batch_terminal, V)
-
-            A = (A - A.mean()) / (A.std() + 1e-10)
 
             ratios = torch.exp(log_prob - old_log_prob)
 
@@ -174,14 +173,12 @@ class FeedForwardNN_Actor(nn.Module):
         self.layer1 = nn.Linear(in_dim, 64)
         self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
-        self.layer3 = nn.Linear(64, 64)
-        self.layer4 = nn.Linear(64, out_dim)
+        self.layer3 = nn.Linear(64, out_dim)
 
         # Initialize weights with low values
-        nn.init.uniform_(self.layer1.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer2.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer3.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer4.weight, -0.05, 0.05)
+        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
 
     def forward(self, obs):
         """
@@ -197,10 +194,9 @@ class FeedForwardNN_Actor(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs)))
+        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
         activation2 = F.relu(self.layer2(activation1))
-        activation3 = F.relu(self.layer3(activation2))
-        output = F.tanh(self.layer4(activation3)) # F.tanh()
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 
@@ -224,14 +220,12 @@ class FeedForwardNN_Critic(nn.Module):
         self.layer1 = nn.Linear(in_dim, 64)
         self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
-        self.layer3 = nn.Linear(64, 64)
-        self.layer4 = nn.Linear(64, out_dim)
+        self.layer3 = nn.Linear(64, out_dim)
 
         # Initialize weights with low values
-        nn.init.uniform_(self.layer1.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer2.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer3.weight, -0.05, 0.05)
-        nn.init.uniform_(self.layer4.weight, -0.05, 0.05)
+        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
     def forward(self, obs):
         """
             Runs a forward pass on the neural network.
@@ -246,10 +240,9 @@ class FeedForwardNN_Critic(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs)))
+        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
         activation2 = F.relu(self.layer2(activation1))
-        activation3 = F.relu(self.layer3(activation2))
-        output = self.layer4(activation3) # F.tanh()
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 
@@ -296,7 +289,7 @@ def episode(agent, n_batch, max_iter = 1000, end_update=True):
                 break
 
         r_eps.append(r_ep)
-        print(f'actions are: {batch_a[-1]}')
+        # print(f'actions are: {batch_a[-1]}')
         # print(f'Variance is: {agent.cov_var}')
         batch_r, batch_s, batch_a, batch_terminal = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float), torch.tensor(batch_terminal, dtype=torch.float)
         if end_update:
