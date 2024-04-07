@@ -25,8 +25,14 @@ This project implements a Proximal Policy Optimization (PPO) algorithm for train
 
 To install and set up the project, follow these steps:
 
-1. Clone the repository: `git clone https://github.com/your_username/your_project.git`
-2. Install dependencies: `pip install -r requirements.txt`
+1. Clone the repository:
+```sh
+$ git clone https://github.com/your_username/your_project.git
+```
+2. Install dependencies: 
+```sh
+$ pip install -r requirements.txt
+```
 3. Set up the environments: Follow instructions in the environments/README.md file
 
 ## Usage
@@ -48,4 +54,3 @@ Contributions are welcome! If you find any bugs, have feature requests, or want 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

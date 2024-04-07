@@ -55,6 +55,10 @@ cover/
 *.mo
 *.pot
 
+# Datasets
+*.csv
+*.json
+
 # Django stuff:
 *.log
 local_settings.py
@@ -135,6 +139,9 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+#DS_Stores
+.DS_Store
 
 # mypy
 .mypy_cache/
