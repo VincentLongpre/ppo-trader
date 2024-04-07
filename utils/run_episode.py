@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 import json
+import os
 
 # function that runs each episode
-def episode(agent, n_episodes, max_iter = 1000, end_update=True):
+def episode(agent, n_episodes, max_iter = 1000):
     batch_r, batch_s, batch_a = [], [], []
 
     r_eps = []
@@ -30,9 +31,6 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
             batch_s.append(s)
             batch_a.append(a)
 
-            if not end_update:
-                agent.update(s, a , r, s_prime)
-
             s, a = s_prime, a_prime
 
             r_ep += r
@@ -44,9 +42,8 @@ def episode(agent, n_episodes, max_iter = 1000, end_update=True):
 
         r_eps.append(r_ep)
 
-    batch_r, batch_s, batch_a = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float)
-    if end_update:
-        agent.update(batch_r, batch_s, batch_a)
+    batch_r, batch_s, batch_a = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float)
+    agent.update(batch_r, batch_s, batch_a)
 
     return r_eps
 
@@ -61,20 +58,21 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
 
             ep_rewards = []
             for ep in range(100): # 100 is for debugging
-                ep_rewards.extend(episode(agent, n_episodes, max_iter, end_update=True))
+                ep_rewards.extend(episode(agent, n_episodes, max_iter))
 
             reward_arr_train[i, run, :] = ep_rewards
 
     return reward_arr_train
 
 def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
+    os.makedirs(save_path, exist_ok=True)
     
     for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
         agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
         for ep in range(500): # 100 is for debugging
-            reward_arr_train.extend(episode(agent, n_episodes, max_iter, end_update=True))
+            reward_arr_train.extend(episode(agent, n_episodes, max_iter))
 
         reward_arr_train = np.array(reward_arr_train)
         with open(save_path + f"mcppo_{run}.json", 'w') as f:
