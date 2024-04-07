@@ -60,26 +60,42 @@ class PPO:
 
         return V, log_prob, entropy
 
-    def compute_G(self, batch_r):
-        G = 0
-        batch_G = []
+    def compute_G(self, batch_r, batch_terminal, V):
 
-        for r in reversed(batch_r):
-            G = r + self.gamma * G
-            batch_G.insert(0, G)
+        V = V.clone().cpu().detach().numpy().flatten()
 
-        batch_G = torch.tensor(batch_G, dtype=torch.float)
+        last_gae_lam = 0
+        batch_size = len(batch_r)
 
-        return batch_G
+        A = [0]*batch_size
+
+        for step in reversed(range(batch_size)):
+
+            if step == batch_size - 1:
+                next_non_terminal = 0
+                next_value = 0
+            else:
+                next_non_terminal = 1.0 - batch_terminal[step + 1]
+                next_value = V[step + 1]
+
+            delta = batch_r[step] + self.gamma * next_value * next_non_terminal - V[step]
+            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            A[step] = last_gae_lam
+        # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
+        # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
+        G = A + V
+
+        G = torch.tensor(G, dtype=torch.float)
+        A = torch.tensor(A, dtype=torch.float)
+
+        return G, A
 
     def update(self, batch_r, batch_s, batch_a):
         V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
-        batch_G = self.compute_G(batch_r)
-
-        A = batch_G - V.detach()
+        batch_G, A = self.compute_G(batch_r)
 
         A = (A - A.mean())/(A.std() + 1e-10)
 
