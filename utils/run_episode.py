@@ -4,12 +4,12 @@ import json
 import os
 
 # function that runs each episode
-def episode(agent, n_episodes, max_iter = 1000):
-    batch_r, batch_s, batch_a = [], [], []
-
+def episode(agent, n_batch, max_iter = 1000):
     r_eps = []
 
-    for _ in range(n_episodes):
+    for _ in range(n_batch):
+
+        batch_r, batch_s, batch_a, batch_terminal = [], [], [], []
 
         s, _ = agent.env.reset()
 
@@ -30,6 +30,7 @@ def episode(agent, n_episodes, max_iter = 1000):
             batch_r.append(r)
             batch_s.append(s)
             batch_a.append(a)
+            batch_terminal.append(termination)
 
             s, a = s_prime, a_prime
 
@@ -41,20 +42,21 @@ def episode(agent, n_episodes, max_iter = 1000):
                 break
 
         r_eps.append(r_ep)
-
-    batch_r, batch_s, batch_a = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float)
-    agent.update(batch_r, batch_s, batch_a)
+        # print(f'actions are: {batch_a[-1]}')
+        # print(f'Variance is: {agent.cov_var}')
+        batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
+        agent.update(batch_r, batch_s, batch_a, batch_terminal)
 
     return r_eps
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
+def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(10): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
+            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
             ep_rewards = []
             for ep in range(100): # 100 is for debugging
@@ -64,12 +66,12 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
 
     return reward_arr_train
 
-def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_episodes, max_iter):
+def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
     os.makedirs(save_path, exist_ok=True)
-    
+
     for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
-        agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
+        agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
         for ep in range(500): # 100 is for debugging
             reward_arr_train.extend(episode(agent, n_episodes, max_iter))

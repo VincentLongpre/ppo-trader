@@ -9,13 +9,14 @@ from torch.distributions import MultivariateNormal
 from utils.run_episode import hyperparams_run_gradient
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lamda, n_updates):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
         self.ent_coef = ent_coef
         self.critic_factor = critic_factor
         self.max_grad_norm = max_grad_norm
+        self.gae_lambda = gae_lamda
         self.n_updates = n_updates
 
         self.env = env
@@ -61,7 +62,6 @@ class PPO:
         return V, log_prob, entropy
 
     def compute_G(self, batch_r, batch_terminal, V):
-
         V = V.clone().cpu().detach().numpy().flatten()
 
         last_gae_lam = 0
@@ -90,12 +90,12 @@ class PPO:
 
         return G, A
 
-    def update(self, batch_r, batch_s, batch_a):
+    def update(self, batch_r, batch_s, batch_a, batch_terminal):
         V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
-        batch_G, A = self.compute_G(batch_r)
+        batch_G, A = self.compute_G(batch_r, batch_terminal, V)
 
         A = (A - A.mean())/(A.std() + 1e-10)
 
