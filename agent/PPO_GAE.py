@@ -147,7 +147,7 @@ class TDPPO(PPO):
             self.actor_optim.zero_grad()
             actor_loss.backward(retain_graph=True)
             self.actor_optim.step()
-        # self.scheduler.step()
+        self.scheduler.step()
 """
 	This file contains a neural network module for us to
 	define our actor and critic networks in PPO.
@@ -291,7 +291,7 @@ def episode(agent, n_batch, max_iter = 1000, end_update=True):
         r_eps.append(r_ep)
         # print(f'actions are: {batch_a[-1]}')
         # print(f'Variance is: {agent.cov_var}')
-        batch_r, batch_s, batch_a, batch_terminal = torch.tensor(batch_r, dtype=torch.float), torch.tensor(batch_s, dtype=torch.float), torch.tensor(batch_a, dtype=torch.float), torch.tensor(batch_terminal, dtype=torch.float)
+        batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
         if end_update:
             agent.update(batch_r, batch_s, batch_a, batch_terminal)
 

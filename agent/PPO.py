@@ -155,9 +155,14 @@ class FeedForwardNN_Actor(nn.Module):
         super(FeedForwardNN_Actor, self).__init__()
 
         self.layer1 = nn.Linear(in_dim, 64)
+        self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
-        self.layer3 = nn.Linear(64, 64)
-        self.layer4 = nn.Linear(64, out_dim)
+        self.layer3 = nn.Linear(64, out_dim)
+
+        # Initialize weights with low values
+        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
 
     def forward(self, obs):
         """
@@ -173,10 +178,9 @@ class FeedForwardNN_Actor(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.layer1(obs))
+        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
         activation2 = F.relu(self.layer2(activation1))
-        activation3 = F.relu(self.layer3(activation2))
-        output = self.layer4(activation3) # F.tanh()
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 
@@ -198,10 +202,14 @@ class FeedForwardNN_Critic(nn.Module):
         super(FeedForwardNN_Critic, self).__init__()
 
         self.layer1 = nn.Linear(in_dim, 64)
+        self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
-        self.layer3 = nn.Linear(64, 64)
-        self.layer4 = nn.Linear(64, out_dim)
+        self.layer3 = nn.Linear(64, out_dim)
 
+        # Initialize weights with low values
+        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
+        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
     def forward(self, obs):
         """
             Runs a forward pass on the neural network.
@@ -216,10 +224,9 @@ class FeedForwardNN_Critic(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.layer1(obs))
+        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
         activation2 = F.relu(self.layer2(activation1))
-        activation3 = F.relu(self.layer3(activation2))
-        output = self.layer4(activation3) # F.tanh()
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 
