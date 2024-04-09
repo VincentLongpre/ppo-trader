@@ -59,7 +59,8 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
             agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
             ep_rewards = []
-            for ep in range(100): # 100 is for debugging
+            for ep in range(1000): # 100 is for debugging
+                print(ep)
                 ep_rewards.extend(episode(agent, n_episodes, max_iter))
 
             reward_arr_train[i, run, :] = ep_rewards

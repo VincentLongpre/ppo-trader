@@ -46,7 +46,7 @@ class PPO:
         #change to low and high bound
         low_bound = self.env.action_space.low[0]
         high_bound = self.env.action_space.high[0]
-        a = torch.clamp(a, low_bound, high_bound)
+        # a = torch.clamp(a, low_bound, high_bound)
 
         return a.detach().numpy(), log_prob.detach()
 
