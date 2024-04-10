@@ -67,18 +67,18 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
 
     return reward_arr_train
 
-def run_trials(agent_class, policy_class, env, save_path, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
+def run_trials(agent_class, policy_class, env, save_path, model_name, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
     os.makedirs(save_path, exist_ok=True)
 
     for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
         agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-        for ep in range(500): # 100 is for debugging
+        for ep in range(603): # 100 is for debugging
             reward_arr_train.extend(episode(agent, n_episodes, max_iter))
 
         reward_arr_train = np.array(reward_arr_train)
-        with open(save_path + f"mcppo_{run}.json", 'w') as f:
+        with open(save_path + f"{model_name}_{run}.json", 'w') as f:
             json.dump(reward_arr_train.tolist(), f)
 
     return reward_arr_train

@@ -73,7 +73,6 @@ class StockEnv(gym.Env):
     def step(self, actions):
         self.terminal = self.day >= len(self.dataframe.index.unique()) - 1
         if self.terminal:
-            print(self.asset_memory[-1] - self.initial_balance)
             pass
 
         else:
