@@ -2,7 +2,7 @@ import pandas as pd
 from preprocessor.utils import data_split
 import numpy as np
 from env import stockEnv
-from agent import PPO_GAE as PPO
+from agent import PPO_Original as PPO
 import torch
 import yaml
 
@@ -19,11 +19,11 @@ with open("./configs/params_PPO.yaml") as f:
 
 env = stockEnv.StockEnv(dataset, **env_cfg)
 
-agent_class = PPO.MCPPO
-# policy_class = PPO.FeedForwardNN
-policy_class_actor = PPO.FeedForwardNN_Actor
-policy_class_critic = PPO.FeedForwardNN_Critic
+agent_class = PPO.PPO
+policy_class = PPO.FeedForwardNN
+# policy_class_actor = PPO.FeedForwardNN_Actor
+# policy_class_critic = PPO.FeedForwardNN_Critic
 
 torch.autograd.set_detect_anomaly(True)
 
-reward_arr_train = PPO.hyperparams_run_gradient(agent_class, policy_class_actor, policy_class_critic, env, **agent_cfg)
+reward_arr_train = PPO.hyperparams_run_gradient(agent_class, policy_class, env, **agent_cfg)

@@ -33,9 +33,10 @@ class StockEnv(gym.Env):
         self.reward_mem = []
 
     def _execute_action(self, actions):
-        actions = actions * self.hmax
+        actions = np.clip(actions, -1, 1) * self.hmax
+        # actions = actions * self.hmax
         actions = (actions.astype(int))
-
+        print(actions)
         argsort_actions = np.argsort(actions)
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
         buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
@@ -72,6 +73,7 @@ class StockEnv(gym.Env):
         self.terminal = self.day >= len(self.dataframe.index.unique()) - 1
         if self.terminal:
             # print(self.trades)
+            # print(actions)
             print(self.asset_memory[-1] - self.initial_balance)
             pass
 

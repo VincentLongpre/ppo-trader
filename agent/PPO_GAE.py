@@ -194,8 +194,8 @@ class FeedForwardNN_Actor(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
-        activation2 = F.relu(self.layer2(activation1))
+        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation2 = F.tanh(self.layer2(activation1))
         output = self.layer3(activation2) # F.tanh()
 
         return output
@@ -240,8 +240,8 @@ class FeedForwardNN_Critic(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs))) # self.ln1(
-        activation2 = F.relu(self.layer2(activation1))
+        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation2 = F.tanh(self.layer2(activation1))
         output = self.layer3(activation2) # F.tanh()
 
         return output

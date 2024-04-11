@@ -194,7 +194,7 @@ def episode(agent, n_episodes, max_iter=1000, end_update=True):
     if end_update:
         agent.update(batch_r, batch_s, batch_a)
 
-    return r_eps
+    return np.mean(r_eps)
 
 
 # function that runs each hyperparameter setting
@@ -203,14 +203,13 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
-        for run in range(10):  # 50, 1 is for debugging
+        for run in range(1):  # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
             agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
 
             ep_rewards = []
-            for ep in range(100):  # 100 is for debugging
-                ep_rewards.extend(episode(agent, n_episodes, max_iter, end_update=True))
-
-            reward_arr_train[i, run, :] = ep_rewards
+            for ep in range(1000):  # 100 is for debugging
+                reward_arr_train[i, run, ep] = episode(agent, n_episodes, max_iter, end_update=True)
+                print(ep)
 
     return reward_arr_train
