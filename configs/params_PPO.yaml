@@ -1,11 +1,11 @@
 learning_rates:
   - 0.0003
 gamma: 0.99
-# gae_lambda: 0.95
+gae_lambda: 0.95
 clip: 0.2
 ent_coef: 0.0
 critic_factor: 0.5
 max_grad_norm: 0.5
 n_updates: 5
-n_episodes: 5 # n_batch
+n_batch: 5 # n_batch
 max_iter: 252
