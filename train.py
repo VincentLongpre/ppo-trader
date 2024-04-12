@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 from utils.create_dataset import data_split
 from stable_baselines3.common.monitor import Monitor
-from agent.Original_PPO import PPO, FeedForwardNN
+from agent.PPO import PPO, FeedForwardNN
 from utils.run_episode import hyperparams_run_gradient, run_trials
 from env.stockEnv import StockEnv
 from stable_baselines3 import PPO as BPPO
@@ -76,3 +76,5 @@ if __name__ == "__main__":
     #     model = BPPO('MlpPolicy', env)
     #     model.learn(total_timesteps=150000, progress_bar=True)
     #     os.rename(os.path.join(save_path, "monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
+
+    plot_learning_curves(save_path)

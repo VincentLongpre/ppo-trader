@@ -43,11 +43,6 @@ class PPO:
 
         log_prob = dist.log_prob(a)
 
-        #change to low and high bound
-        low_bound = self.env.action_space.low[0]
-        high_bound = self.env.action_space.high[0]
-        a = torch.clamp(a, low_bound, high_bound)
-
         return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
@@ -96,8 +91,7 @@ class PPO:
         old_log_prob = old_log_prob.detach()
 
         batch_G, A = self.compute_G(batch_r, batch_terminal, V)
-
-        A = (A - A.mean())/(A.std() + 1e-10)
+        A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_updates):
             V, log_prob, entropy = self.evaluate(batch_s, batch_a)
@@ -113,17 +107,8 @@ class PPO:
 
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+            nn.utils.clip_grad_norm_(list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var], self.max_grad_norm)
             self.optimizer.step()
-
-            # self.actor_optim.zero_grad()
-            # actor_loss.backward()
-            # self.actor_optim.step()
-
-            # self.critic_optim.zero_grad()
-            # critic_loss.backward()
-            # self.critic_optim.step()
-
 """
 	This file contains a neural network module for us to
 	define our actor and critic networks in PPO.
@@ -151,6 +136,7 @@ class FeedForwardNN(nn.Module):
         self.layer2 = nn.Linear(64, 64)
         self.layer3 = nn.Linear(64, out_dim)
 
+        # Initialize weights with low values
         nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
         nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
         nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
@@ -169,9 +155,9 @@ class FeedForwardNN(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs)))
-        activation2 = F.relu(self.layer2(activation1))
-        output = self.layer3(activation2)
+        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation2 = F.tanh(self.layer2(activation1))
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 

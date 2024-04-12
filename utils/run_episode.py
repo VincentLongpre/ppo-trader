@@ -72,13 +72,25 @@ def run_trials(agent_class, policy_class, env, save_path, model_name, learning_r
 
     for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
-        agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-        for ep in range(603): # 100 is for debugging
-            reward_arr_train.extend(episode(agent, n_episodes, max_iter))
+        for _ in range(3):
+            try:
+                agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-        reward_arr_train = np.array(reward_arr_train)
-        with open(save_path + f"{model_name}_{run}.json", 'w') as f:
-            json.dump(reward_arr_train.tolist(), f)
+                for ep in range(603): # 100 is for debugging
+                    mean_returns = np.mean(episode(agent, n_episodes, max_iter))
+                    reward_arr_train.append(mean_returns)
+
+                    if ep % 100 == 0:
+                        print(f"Episode {ep} - Mean Return: {np.mean(mean_returns)}")
+
+                reward_arr_train = np.array(reward_arr_train)
+                with open(save_path + f"{model_name}_{run}.json", 'w') as f:
+                    json.dump(reward_arr_train.tolist(), f)
+
+                break
+            
+            except:
+                pass
 
     return reward_arr_train

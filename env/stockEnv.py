@@ -33,9 +33,8 @@ class StockEnv(gym.Env):
         self.reward_mem = []
 
     def _execute_action(self, actions):
-        actions = actions * self.hmax
-        actions = actions.astype(int)
-        actions = np.clip(actions, -100, 100)
+        actions = np.clip(actions, -1, 1) * self.hmax
+        actions = (actions.astype(int))
 
         argsort_actions = np.argsort(actions)
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
