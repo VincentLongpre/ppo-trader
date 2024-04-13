@@ -4,7 +4,7 @@ import json
 import os
 
 # function that runs each episode
-def episode(agent, n_batch, max_iter = 1000):
+def episode(agent, n_batch, max_iter = 1000, testing=False):
     r_eps = []
 
     for _ in range(n_batch):
@@ -45,7 +45,9 @@ def episode(agent, n_batch, max_iter = 1000):
         # print(f'actions are: {batch_a[-1]}')
         # print(f'Variance is: {agent.cov_var}')
         batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
-        agent.update(batch_r, batch_s, batch_a, batch_terminal)
+
+        if not testing:
+            agent.update(batch_r, batch_s, batch_a, batch_terminal)
 
     return r_eps
 
@@ -77,12 +79,12 @@ def run_trials(agent_class, policy_class, env, save_path, model_name, learning_r
             try:
                 agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-                for ep in range(603): # 100 is for debugging
-                    mean_returns = np.mean(episode(agent, n_episodes, max_iter))
-                    reward_arr_train.append(mean_returns)
+                for ep in range(120): # 100 is for debugging
+                    ep_returns = episode(agent, n_episodes, max_iter)
+                    reward_arr_train.extend(ep_returns)
 
                     if ep % 100 == 0:
-                        print(f"Episode {ep} - Mean Return: {np.mean(mean_returns)}")
+                        print(f"Episode {ep} - Mean Return: {np.mean(ep_returns)}")
 
                 reward_arr_train = np.array(reward_arr_train)
                 with open(save_path + f"{model_name}_{run}.json", 'w') as f:

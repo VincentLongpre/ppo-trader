@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 from utils.create_dataset import data_split
 from stable_baselines3.common.monitor import Monitor
-from agent.PPO import PPO, FeedForwardNN
+from agent.Original_PPO import PPO, FeedForwardNN
 from utils.run_episode import hyperparams_run_gradient, run_trials
 from env.stockEnv import StockEnv
 from stable_baselines3 import PPO as BPPO

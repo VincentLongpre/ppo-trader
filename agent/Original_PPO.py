@@ -24,8 +24,8 @@ class PPO:
         self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value=1.0))
         self.cov_mat = torch.diag(self.cov_var)
 
-        self.actor_optim = Adam(list(self.actor.parameters()) + [self.cov_var], lr=self.lr)
-        self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
+        self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
+        self.critic_optim = Adam(list(self.critic.parameters()) + [self.cov_var], lr=self.lr)
 
 
     def select_action(self, s):

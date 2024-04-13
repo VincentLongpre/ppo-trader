@@ -7,6 +7,9 @@ from torch.optim import Adam
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 from utils.run_episode import hyperparams_run_gradient
+import logging
+
+logging.basicConfig(filename='training.log', level=logging.INFO, format='%(message)s')
 
 class PPO:
     def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lamda, n_updates):
@@ -91,6 +94,10 @@ class PPO:
         old_log_prob = old_log_prob.detach()
 
         batch_G, A = self.compute_G(batch_r, batch_terminal, V)
+
+        logging.info("Mean Advantage: %.4f", A.mean().item())
+        logging.info("Std Advantage: %.4f", A.std().item())
+
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_updates):
@@ -104,6 +111,13 @@ class PPO:
             actor_loss = (-torch.min(term1, term2)).mean()
             critic_loss = nn.MSELoss()(V, batch_G)
             loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
+
+            logging.info("Log Probabilities: %s", log_prob.tolist())
+            logging.info("Mean Ratios: %.4f", torch.mean(ratios).item())
+            logging.info("Actor Loss: %.4f", actor_loss.item())
+            logging.info("Critic Loss: %.4f", critic_loss.item())
+            logging.info("Total Loss: %.4f", loss.item())
+            logging.info("Var: %.4f", torch.mean(self.cov_var).item())
 
             self.optimizer.zero_grad()
             loss.backward()
