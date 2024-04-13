@@ -36,7 +36,7 @@ class StockEnv(gym.Env):
         actions = np.clip(actions, -1, 1) * self.hmax
         # actions = actions * self.hmax
         actions = (actions.astype(int))
-        print(actions)
+
         argsort_actions = np.argsort(actions)
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
         buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]

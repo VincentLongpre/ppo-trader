@@ -5,9 +5,10 @@ import torch.nn as nn
 from torch.optim import Adam
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
+import json
 
 class PPO:
-    def __init__(self, policy_class_actor, policy_class_critic, env, lr, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
+    def __init__(self, policy_class_actor, policy_class_critic, env, lr, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates, max_timesteps, batch_size):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.gae_lambda = gae_lambda
@@ -16,6 +17,9 @@ class PPO:
         self.critic_factor = critic_factor
         self.max_grad_norm = max_grad_norm
         self.n_updates = n_updates
+
+        self.max_timesteps = max_timesteps
+        self.batch_size = batch_size
 
         self.env = env
         self.s_dim = env.observation_space.shape[0]
@@ -32,6 +36,7 @@ class PPO:
             lr=lr
         )
 
+        self.logs = {"actor_loss": [], "critic_loss": [], "ratios": [], "advantages": []}
         # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.999)
 
     def select_action(self, s):
@@ -90,31 +95,42 @@ class MCPPO(PPO):
 
         return G, A
 
-    def update(self, batch_r, batch_s, batch_a, batch_terminal):
-        V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
+    def update(self, batch_r, batch_s, batch_a, batch_terminal, G, A, old_log_prob):
 
         old_log_prob = old_log_prob.detach()
 
-        batch_G, A = self.compute_G(batch_r, batch_terminal, V)
-        A = (A - A.mean()) / (A.std() + 1e-10)
-
         for _ in range(self.n_updates):
-            V, log_prob, entropy = self.evaluate(batch_s, batch_a)
 
-            ratios = torch.exp(log_prob - old_log_prob)
+            for i in range(0,self.max_timesteps, self.batch_size):
 
-            term1 = ratios * A
-            term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * A
+                minibatch_A = A[i:i+self.batch_size]
+                minibatch_A = (minibatch_A - minibatch_A.mean()) / (minibatch_A.std() + 1e-10)
 
-            actor_loss = (-torch.min(term1, term2)).mean()
-            critic_loss = nn.MSELoss()(V, batch_G)
-            loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
+                minibatch_s, minibatch_a = batch_s[i:i+self.batch_size], batch_a[i:i+self.batch_size]
+                V, log_prob, entropy = self.evaluate(minibatch_s, minibatch_a)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var], self.max_grad_norm)
-            self.optimizer.step()
+                ratios = torch.exp(log_prob - old_log_prob[i:i+self.batch_size])
 
+                term1 = ratios * minibatch_A
+                term2 = torch.clamp(ratios, 1-self.clip, 1+self.clip) * minibatch_A
+
+                actor_loss = (-torch.min(term1, term2)).mean()
+                critic_loss = nn.MSELoss()(V, G[i:i+self.batch_size])
+                loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
+
+                # print(f'actor_loss: {actor_loss}', f'critic_loss: {critic_loss}', f'loss: {loss}', f'ratio: {ratios}', f'advantage: {A}')
+                self.optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var], self.max_grad_norm)
+                self.optimizer.step()
+
+            #     if _ == self.n_updates - 1:
+            #         actor_loss_log = actor_loss.detach().numpy().tolist()
+            #         critic_loss_log = critic_loss.detach().numpy().tolist()
+            #         ratios_log = ratios.detach().numpy().tolist()
+            #         advantages_log = A.detach().numpy().tolist()
+            #
+            # return actor_loss_log, critic_loss_log, ratios_log, advantages_log
 class TDPPO(PPO):
     def update(self, s, a, r, next_s):
         r = torch.tensor(r, dtype=torch.float)
@@ -171,14 +187,14 @@ class FeedForwardNN_Actor(nn.Module):
         super(FeedForwardNN_Actor, self).__init__()
 
         self.layer1 = nn.Linear(in_dim, 64)
-        self.ln1 = nn.LayerNorm(64)
+        # self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
         self.layer3 = nn.Linear(64, out_dim)
 
         # Initialize weights with low values
-        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
-        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
-        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
+        nn.init.orthogonal_(self.layer1.weight, gain=0.01)
+        nn.init.orthogonal_(self.layer1.weight, gain=0.01)
+        nn.init.orthogonal_(self.layer1.weight, gain=0.01)
 
     def forward(self, obs):
         """
@@ -194,7 +210,7 @@ class FeedForwardNN_Actor(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation1 = F.tanh(self.layer1(obs)) # self.ln1(
         activation2 = F.tanh(self.layer2(activation1))
         output = self.layer3(activation2) # F.tanh()
 
@@ -218,14 +234,14 @@ class FeedForwardNN_Critic(nn.Module):
         super(FeedForwardNN_Critic, self).__init__()
 
         self.layer1 = nn.Linear(in_dim, 64)
-        self.ln1 = nn.LayerNorm(64)
+        # self.ln1 = nn.LayerNorm(64)
         self.layer2 = nn.Linear(64, 64)
         self.layer3 = nn.Linear(64, out_dim)
 
         # Initialize weights with low values
-        nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
-        nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
-        nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
+        nn.init.orthogonal_(self.layer1.weight, gain=1)
+        nn.init.orthogonal_(self.layer1.weight, gain=1)
+        nn.init.orthogonal_(self.layer1.weight, gain=1)
     def forward(self, obs):
         """
             Runs a forward pass on the neural network.
@@ -240,33 +256,40 @@ class FeedForwardNN_Critic(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation1 = F.tanh(self.layer1(obs)) # self.ln1(
         activation2 = F.tanh(self.layer2(activation1))
         output = self.layer3(activation2) # F.tanh()
 
         return output
 
 # function that runs each episode
-def episode(agent, n_batch, max_iter = 1000, end_update=True):
+def episode(agent, end_update=True):
 
     r_eps = []
 
-    for _ in range(n_batch):
+    # actor_loss_list, critic_loss_list, ratios_list, advantages_list = [], [], [], []
 
-        batch_r, batch_s, batch_a, batch_terminal = [], [], [], []
+    batch_r, batch_s, batch_a, batch_terminal = [], [], [], []
 
-        s, _ = agent.env.reset()
+    t = 0
 
-        termination, truncation = False, False
+    while t < agent.max_timesteps:
+
+        if (agent.env.terminal) or (t==0):
+            s, _ = agent.env.reset()
+
+        else:
+            s_prime, r, termination, _, _ = agent.env.step(a)
 
         a, _ = agent.select_action(torch.tensor(s, dtype=torch.float))
 
+        t+= 1
+
         r_ep = 0
 
-        t = 0
-
         # while not (termination or truncation):
-        for _ in range(max_iter):
+        for _ in range(agent.batch_size - 1):
+
             s_prime, r, termination, _, _ = agent.env.step(a)
 
             a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
@@ -276,41 +299,57 @@ def episode(agent, n_batch, max_iter = 1000, end_update=True):
             batch_a.append(a)
             batch_terminal.append(termination)
 
-            if not end_update:
-                agent.update(s, a , r, s_prime)
-
             s, a = s_prime, a_prime
 
             r_ep += r
 
             t += 1
 
-            if termination:
+            if agent.env.terminal:
                 break
 
         r_eps.append(r_ep)
-        # print(f'actions are: {batch_a[-1]}')
-        # print(f'Variance is: {agent.cov_var}')
-        batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
-        if end_update:
-            agent.update(batch_r, batch_s, batch_a, batch_terminal)
+    # print(f'actions are: {batch_a[-1]}')
+    # print(f'Variance is: {agent.cov_var}')
+    batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
+    V, old_log_prob, entropy = agent.evaluate(batch_s, batch_a)
+    G, A = agent.compute_G(batch_r, batch_terminal, V)
+
+
+    agent.update(batch_r, batch_s, batch_a, batch_terminal, G, A, old_log_prob)
+    # actor_loss, critic_loss, ratios, advantages = agent.update(batch_r, batch_s, batch_a, batch_terminal, G, A, old_log_prob)
+    # actor_loss_list.append(actor_loss)
+    # critic_loss_list.append(critic_loss)
+    # ratios_list.append(ratios)
+    # advantages_list.append(advantages)
+
+    # agent.logs["actor_loss"].append(actor_loss_list)
+    # agent.logs["critic_loss"].append(critic_loss_list)
+    # agent.logs["ratios"].append(ratios_list)
+    # agent.logs["advantages"].append(advantages_list)
 
     return np.mean(r_eps)
 
 # function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class_actor, policy_class_critic, env, learning_rates, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates, n_batch, max_iter):
+def hyperparams_run_gradient(agent_class, policy_class_actor, policy_class_critic, env, learning_rates, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates, max_timesteps, batch_size):
 
     reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
 
     for i, lr in enumerate(learning_rates):
         for run in range(1): # 50, 1 is for debugging
             print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class_actor, policy_class_critic, env, lr, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates)
+            agent = agent_class(policy_class_actor, policy_class_critic, env, lr, gamma, gae_lambda, clip, ent_coef, critic_factor, max_grad_norm, n_updates, max_timesteps, batch_size)
 
             for ep in range(1000): # 100 is for debugging
-                reward_arr_train[i, run, ep] = episode(agent, n_batch, max_iter, end_update=True)
+                reward_arr_train[i, run, ep] = episode(agent, end_update=True)
                 # print(agent.cov_var)
                 print(ep)
+
+                # json_str = json.dumps(agent.logs, indent=4)
+                #
+                # # Write JSON string to a file
+                # with open("logs/training_log.json", "w") as json_file:
+                #     json_file.write(json_str)
 
     return reward_arr_train
 

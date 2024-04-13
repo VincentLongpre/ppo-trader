@@ -19,7 +19,7 @@ with open("./configs/params_PPO.yaml") as f:
 
 env = stockEnv.StockEnv(dataset, **env_cfg)
 
-agent_class = PPO.MCPPO
+agent_class = PPO.MCPPO ## PPO.MCPPO
 # policy_class = PPO.FeedForwardNN
 policy_class_actor = PPO.FeedForwardNN_Actor
 policy_class_critic = PPO.FeedForwardNN_Critic
