@@ -5,7 +5,6 @@ Add abstract when finished
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Contributing](#contributing)
@@ -14,12 +13,6 @@ Add abstract when finished
 ## Introduction
 
 This project aims to reimplement the Proximal Policy Optimization (PPO) algorithm from scratch using PyTorch. Our goal is to achieve comparable results to Stable Baselines' implementation across multiple environments. We conduct comparisons between our PPO implementation and Stable Baselines' version on the Pendulum environment and a custom StockEnv environment containing the 30 constituent stocks of the Dow Jones index.
-
-## Features
-
-- Implements Proximal Policy Optimization (PPO) algorithm
-- Compares performance with Stable Baselines' implementation
-- Evaluates on Pendulum and custom StockEnv environments
 
 ## Installation
 
