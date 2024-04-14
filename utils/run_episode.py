@@ -1,11 +1,13 @@
 import numpy as np
+import pickle as pkl
 import torch
 import json
 import os
 
 # function that runs each episode
-def episode(agent, n_batch, max_iter = 1000, testing=False):
+def episode(agent, n_batch, max_iter = 10000, testing=False):
     r_eps = []
+    asset_hist = [agent.env.asset_memory[0]]
 
     for _ in range(n_batch):
 
@@ -22,7 +24,7 @@ def episode(agent, n_batch, max_iter = 1000, testing=False):
         t = 0
 
         # while not (termination or truncation):
-        for _ in range(max_iter):
+        for i in range(max_iter):
             s_prime, r, termination, _, _ = agent.env.step(a)
 
             a_prime, _ = agent.select_action(torch.tensor(s_prime, dtype=torch.float))
@@ -41,13 +43,20 @@ def episode(agent, n_batch, max_iter = 1000, testing=False):
             if termination:
                 break
 
-        r_eps.append(r_ep)
+            if testing:
+                asset_hist.append(agent.env.asset_memory[-1])
+
+        if not testing:
+            r_eps.append(r_ep)
         # print(f'actions are: {batch_a[-1]}')
         # print(f'Variance is: {agent.cov_var}')
         batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
 
         if not testing:
             agent.update(batch_r, batch_s, batch_a, batch_terminal)
+
+    if testing:
+        return asset_hist
 
     return r_eps
 
@@ -69,8 +78,9 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
 
     return reward_arr_train
 
-def run_trials(agent_class, policy_class, env, save_path, model_name, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
-    os.makedirs(save_path, exist_ok=True)
+def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, model_name, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
+    os.makedirs(run_save_path, exist_ok=True)
+    os.makedirs(model_save_path, exist_ok=True)
 
     for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
@@ -87,8 +97,12 @@ def run_trials(agent_class, policy_class, env, save_path, model_name, learning_r
                         print(f"Episode {ep} - Mean Return: {np.mean(ep_returns)}")
 
                 reward_arr_train = np.array(reward_arr_train)
-                with open(save_path + f"{model_name}_{run}.json", 'w') as f:
+
+                with open(run_save_path + f"{model_name}_{run}.json", 'w') as f:
                     json.dump(reward_arr_train.tolist(), f)
+
+                with open(model_save_path + f"{model_name}/{run}.pkl", 'wb') as f:
+                    pkl.dump(agent, f)
 
                 break
             

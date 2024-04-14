@@ -6,5 +6,5 @@ critic_factor: 0.5
 max_grad_norm: 0.5
 gae_lambda: 0.95
 n_updates: 5
-n_episodes: 3
+n_episodes: 5
 max_iter: 252

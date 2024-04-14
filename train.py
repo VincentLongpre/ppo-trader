@@ -64,11 +64,12 @@ if __name__ == "__main__":
     with open("configs/env_configs.yaml", 'r') as f:
         env_configs = yaml.safe_load(f)
 
-    save_path = "runs/stockEnv/"
+    run_save_path = "runs/stockEnv/"
+    model_save_path = "models/"
 
     env = StockEnv(dataset, **env_configs)
 
-    run_trials(PPO, FeedForwardNN, env, save_path, "ppo_v", **ppo_configs)
+    run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
 
     # for run in range(10):
     #     env = StockEnv(dataset, **env_configs)
@@ -77,4 +78,4 @@ if __name__ == "__main__":
     #     model.learn(total_timesteps=150000, progress_bar=True)
     #     os.rename(os.path.join(save_path, "monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
 
-    plot_learning_curves(save_path)
+    plot_learning_curves(run_save_path)

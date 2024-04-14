@@ -29,7 +29,7 @@ class StockEnv(gym.Env):
         self.turbulence = 0
         self.nb_trades = 0
 
-        self.asset_mem = [self.initial_balance]
+        self.asset_memory = [self.initial_balance]
         self.reward_mem = []
 
     def _execute_action(self, actions):
