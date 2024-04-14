@@ -1,6 +1,6 @@
 # Reimplementing PPO and Assessing its Performance in Stock Trading Strategies
 
-This project implements a Proximal Policy Optimization (PPO) algorithm for training agents in various environments. It includes comparisons between our PPO implementation and Stable Baselines' implementation on the Pendulum and custom StockEnv environments.
+This project implements a Proximal Policy Optimization (PPO) algorithm for training agents in various environments. It includes comparisons between our PPO implementation and Stable Baselines' implementation on the Pendulum and a custom StockEnv environment featuring the 30 constituent stocks of the Dow Jones index.
 
 ## Table of Contents
 
