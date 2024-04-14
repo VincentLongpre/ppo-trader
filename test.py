@@ -97,6 +97,7 @@ if __name__ == "__main__":
     # Evaluate our PPO
     our_lists_dict = {
         'balances': [],
+        'cum_returns': [],
         'sharpe_ratio': [],
         'ann_return': [],
         'ann_vol': [],
@@ -115,8 +116,8 @@ if __name__ == "__main__":
 
             daily_returns = np.diff(cur_balcances) / cur_balcances[:-1]
 
-            cumulative_returns = empyrical.cum_returns(daily_returns)
-            our_lists_dict['cumm_returns'].append(cumulative_returns)
+            cumulative_returns = empyrical.cum_returns_final(daily_returns)
+            our_lists_dict['cum_returns'].append(cumulative_returns)
 
             sharpe_ratio = empyrical.sharpe_ratio(daily_returns)
             our_lists_dict['sharpe_ratio'].append(sharpe_ratio)
@@ -137,6 +138,7 @@ if __name__ == "__main__":
     # Evaluate stable baselines's PPO
     sb3_lists_dict = {
         'balances': [],
+        'cum_returns': [],
         'sharpe_ratio': [],
         'ann_return': [],
         'ann_vol': [],
@@ -153,8 +155,8 @@ if __name__ == "__main__":
 
             daily_returns = np.diff(cur_balcances) / cur_balcances[:-1]
 
-            cumulative_returns = empyrical.cum_returns(daily_returns)
-            sb3_lists_dict['cumm_returns'].append(cumulative_returns)
+            cumulative_returns = empyrical.cum_returns_final(daily_returns)
+            sb3_lists_dict['cum_returns'].append(cumulative_returns)
 
             sharpe_ratio = empyrical.sharpe_ratio(daily_returns)
             sb3_lists_dict['sharpe_ratio'].append(sharpe_ratio)
