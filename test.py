@@ -81,7 +81,7 @@ def print_mean_statistics(sb3_lists_dict, our_lists_dict):
 
 if __name__ == "__main__":
     dataset = pd.read_csv("processed_dataset.csv")
-    dataset = data_split(dataset, '2016-01-01', '2020-01-01')
+    dataset = data_split(dataset, '2016-01-01', '2020-05-08')
     dates = dataset.date.drop_duplicates().values
 
     with open("configs/ppo_configs.yaml", 'r') as f:
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         'max_dd': []
         }
     
-    for file in os.listdir(model_path + "our_ppo"):
+    for file in [f for f in os.listdir(model_path + "our_ppo") if not f.startswith('.')]:
         with open(model_path + f"our_ppo/{file}", 'rb') as f:
             agent = pkl.load(f)
         
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         'max_dd': []
         }
     
-    for file in os.listdir(model_path + "sb3_ppo"):
+    for file in [f for f in os.listdir(model_path + "sb3_ppo") if not f.startswith('.')]:
         file = os.path.splitext(file)[0]
         agent = BPPO.load(model_path + f"sb3_ppo/{file}")
 

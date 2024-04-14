@@ -82,7 +82,7 @@ def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, m
     os.makedirs(run_save_path, exist_ok=True)
     os.makedirs(model_save_path, exist_ok=True)
 
-    for run in range(1, 10): # 50, 1 is for debugging
+    for run in range(10): # 50, 1 is for debugging
         reward_arr_train = []
 
         for _ in range(3):
