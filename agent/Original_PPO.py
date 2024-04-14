@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates):
 
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
@@ -21,11 +21,12 @@ class PPO:
         self.actor = policy_class(self.s_dim, self.a_dim)
         self.critic = policy_class(self.s_dim, 1)
 
-        self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
-        self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
-
-        self.cov_var = torch.full(size=(self.a_dim,), fill_value=0.5)
+        self.cov_var = nn.Parameter(torch.full(size=(self.a_dim,), fill_value=1.0))
         self.cov_mat = torch.diag(self.cov_var)
+
+        self.actor_optim = Adam(list(self.actor.parameters()) + [self.cov_var], lr=self.lr)
+        self.critic_optim = Adam(self.critic.parameters() , lr=self.lr)
+
 
     def select_action(self, s):
 
@@ -49,8 +50,7 @@ class PPO:
 
         return V, log_prob
 
-    def compute_G(self, batch_r):
-
+    def compute_G(self, batch_r, batch_terminal, V):
         G = 0
         batch_G = []
 
@@ -63,13 +63,12 @@ class PPO:
 
         return batch_G
 
-    def update(self, batch_r, batch_s, batch_a):
-
+    def update(self, batch_r, batch_s, batch_a, batch_terminal):
         V, old_log_prob = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
-        batch_G = self.compute_G(batch_r)
+        batch_G = self.compute_G(batch_r, batch_terminal, V)
 
         A = batch_G - V.detach()
 

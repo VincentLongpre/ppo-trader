@@ -7,15 +7,19 @@ from torch.optim import Adam
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 from utils.run_episode import hyperparams_run_gradient
+import logging
+
+logging.basicConfig(filename='training.log', level=logging.INFO, format='%(message)s')
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, n_updates):
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lamda, n_updates):
         self.lr = lr                                # Learning rate of actor optimizer
         self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
         self.clip = clip
         self.ent_coef = ent_coef
         self.critic_factor = critic_factor
         self.max_grad_norm = max_grad_norm
+        self.gae_lambda = gae_lamda
         self.n_updates = n_updates
 
         self.env = env
@@ -42,11 +46,6 @@ class PPO:
 
         log_prob = dist.log_prob(a)
 
-        #change to low and high bound
-        low_bound = self.env.action_space.low[0]
-        high_bound = self.env.action_space.high[0]
-        a = torch.clamp(a, low_bound, high_bound)
-
         return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
@@ -60,28 +59,46 @@ class PPO:
 
         return V, log_prob, entropy
 
-    def compute_G(self, batch_r):
-        G = 0
-        batch_G = []
+    def compute_G(self, batch_r, batch_terminal, V):
+        V = V.clone().cpu().detach().numpy().flatten()
 
-        for r in reversed(batch_r):
-            G = r + self.gamma * G
-            batch_G.insert(0, G)
+        last_gae_lam = 0
+        batch_size = len(batch_r)
 
-        batch_G = torch.tensor(batch_G, dtype=torch.float)
+        A = [0]*batch_size
 
-        return batch_G
+        for step in reversed(range(batch_size)):
 
-    def update(self, batch_r, batch_s, batch_a):
+            if step == batch_size - 1:
+                next_non_terminal = 0
+                next_value = 0
+            else:
+                next_non_terminal = 1.0 - batch_terminal[step + 1]
+                next_value = V[step + 1]
+
+            delta = batch_r[step] + self.gamma * next_value * next_non_terminal - V[step]
+            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            A[step] = last_gae_lam
+        # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
+        # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
+        G = A + V
+
+        G = torch.tensor(G, dtype=torch.float)
+        A = torch.tensor(A, dtype=torch.float)
+
+        return G, A
+
+    def update(self, batch_r, batch_s, batch_a, batch_terminal):
         V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
 
-        batch_G = self.compute_G(batch_r)
+        batch_G, A = self.compute_G(batch_r, batch_terminal, V)
 
-        A = batch_G - V.detach()
+        logging.info("Mean Advantage: %.4f", A.mean().item())
+        logging.info("Std Advantage: %.4f", A.std().item())
 
-        A = (A - A.mean())/(A.std() + 1e-10)
+        A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_updates):
             V, log_prob, entropy = self.evaluate(batch_s, batch_a)
@@ -95,19 +112,17 @@ class PPO:
             critic_loss = nn.MSELoss()(V, batch_G)
             loss = actor_loss + self.critic_factor * critic_loss + self.ent_coef * entropy.mean()
 
+            logging.info("Log Probabilities: %s", log_prob.tolist())
+            logging.info("Mean Ratios: %.4f", torch.mean(ratios).item())
+            logging.info("Actor Loss: %.4f", actor_loss.item())
+            logging.info("Critic Loss: %.4f", critic_loss.item())
+            logging.info("Total Loss: %.4f", loss.item())
+            logging.info("Var: %.4f", torch.mean(self.cov_var).item())
+
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+            nn.utils.clip_grad_norm_(list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var], self.max_grad_norm)
             self.optimizer.step()
-
-            # self.actor_optim.zero_grad()
-            # actor_loss.backward()
-            # self.actor_optim.step()
-
-            # self.critic_optim.zero_grad()
-            # critic_loss.backward()
-            # self.critic_optim.step()
-
 """
 	This file contains a neural network module for us to
 	define our actor and critic networks in PPO.
@@ -135,6 +150,7 @@ class FeedForwardNN(nn.Module):
         self.layer2 = nn.Linear(64, 64)
         self.layer3 = nn.Linear(64, out_dim)
 
+        # Initialize weights with low values
         nn.init.normal_(self.layer1.weight, mean=0.0, std=0.1)
         nn.init.normal_(self.layer2.weight, mean=0.0, std=0.1)
         nn.init.normal_(self.layer3.weight, mean=0.0, std=0.1)
@@ -153,9 +169,9 @@ class FeedForwardNN(nn.Module):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.ln1(self.layer1(obs)))
-        activation2 = F.relu(self.layer2(activation1))
-        output = self.layer3(activation2)
+        activation1 = F.tanh(self.ln1(self.layer1(obs))) # self.ln1(
+        activation2 = F.tanh(self.layer2(activation1))
+        output = self.layer3(activation2) # F.tanh()
 
         return output
 

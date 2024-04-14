@@ -29,12 +29,12 @@ class StockEnv(gym.Env):
         self.turbulence = 0
         self.nb_trades = 0
 
-        self.asset_mem = [self.initial_balance]
+        self.asset_memory = [self.initial_balance]
         self.reward_mem = []
 
     def _execute_action(self, actions):
-        actions = actions * self.hmax
-        actions = actions.astype(int)
+        actions = np.clip(actions, -1, 1) * self.hmax
+        actions = (actions.astype(int))
 
         argsort_actions = np.argsort(actions)
         sell_index = argsort_actions[:np.where(actions < 0)[0].shape[0]]
@@ -72,7 +72,6 @@ class StockEnv(gym.Env):
     def step(self, actions):
         self.terminal = self.day >= len(self.dataframe.index.unique()) - 1
         if self.terminal:
-            print(self.asset_memory[-1] - self.initial_balance)
             pass
 
         else:

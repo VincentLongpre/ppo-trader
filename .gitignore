@@ -59,6 +59,9 @@ cover/
 *.csv
 *.json
 
+# Models
+models/
+
 # Django stuff:
 *.log
 local_settings.py
