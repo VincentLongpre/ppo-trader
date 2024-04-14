@@ -4,6 +4,7 @@ import os
 import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.dates import MonthLocator
 import gymnasium as gym
 from utils.create_dataset import data_split
 from agent.PPO import PPO, FeedForwardNN
@@ -13,22 +14,34 @@ from stable_baselines3 import PPO as BPPO
 from datetime import datetime
 import empyrical
 
-def plot_portfolio_stats(mean_asset_values, volatility):
+
+def plot_portfolio_stats(dates, mean_asset_values, volatility):
     upper_volatility_bounds = mean_asset_values + 2 * volatility
     lower_volatility_bounds = mean_asset_values - 2 * volatility
 
-    plt.plot(mean_asset_values, label='Mean Asset Value', color='blue')
-    plt.fill_between(range(len(mean_asset_values)), lower_volatility_bounds, upper_volatility_bounds, color='gray', alpha=0.3)
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    plt.ylabel('Asset Value')
-    plt.title('Mean Asset Value and Volatility Bounds')
-    plt.legend()
+    ax.plot(dates, mean_asset_values, label='Ours', color='blue', linewidth=2)
+    ax.fill_between(dates, lower_volatility_bounds, upper_volatility_bounds, color='lightblue', alpha=0.3)
 
+    ax.grid(True, linestyle='--', alpha=0.5)
+
+    ax.set_xlabel('Date', fontsize=12)
+    ax.set_ylabel('Asset Value', fontsize=12)
+    ax.set_title('Mean Asset Value and Volatility Bounds', fontsize=14)
+    ax.legend(fontsize=10)
+
+    ax.xaxis.set_major_locator(MonthLocator())
+
+    plt.xticks(rotation=45)
+
+    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
     dataset = pd.read_csv("processed_dataset.csv")
     dataset = data_split(dataset, '2016-01-01', '2020-01-01')
+    dates = dataset.date.drop_duplicates().values
 
     with open("configs/ppo_configs.yaml", 'r') as f:
         ppo_configs = yaml.safe_load(f)
@@ -75,7 +88,7 @@ if __name__ == "__main__":
     our_mean_asset = np.mean(our_lists_dict['balances'], axis=0)
     our_asset_volatility = np.std(our_lists_dict['balances'], axis=0)
 
-    plot_portfolio_stats(our_mean_asset, our_asset_volatility)
+    plot_portfolio_stats(dates, our_mean_asset, our_asset_volatility)
 
         
 
