@@ -70,7 +70,7 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
             agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
             ep_rewards = []
-            for ep in range(1000): # 100 is for debugging
+            for ep in range(100): # 100 is for debugging
                 print(ep)
                 ep_rewards.extend(episode(agent, n_episodes, max_iter))
 
@@ -82,7 +82,7 @@ def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, m
     os.makedirs(run_save_path, exist_ok=True)
     os.makedirs(model_save_path, exist_ok=True)
 
-    for run in range(10): # 50, 1 is for debugging
+    for run in range(1, 10): # 50, 1 is for debugging
         reward_arr_train = []
 
         for _ in range(3):

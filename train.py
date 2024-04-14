@@ -1,5 +1,6 @@
 import pandas as pd
 import yaml
+import pickle as pkl
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -69,13 +70,14 @@ if __name__ == "__main__":
 
     env = StockEnv(dataset, **env_configs)
 
-    run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
+    # run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
 
-    # for run in range(10):
-    #     env = StockEnv(dataset, **env_configs)
-    #     env = Monitor(env, save_path)
-    #     model = BPPO('MlpPolicy', env)
-    #     model.learn(total_timesteps=150000, progress_bar=True)
-    #     os.rename(os.path.join(save_path, "monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
+    for run in range(10):
+        env = StockEnv(dataset, **env_configs)
+        env = Monitor(env, run_save_path)
+        model = BPPO('MlpPolicy', env)
+        model.learn(total_timesteps=150000, progress_bar=True)
+        os.rename(os.path.join(run_save_path, "monitor.csv"), os.path.join(run_save_path, f"sb3_ppo_{run}.csv"))
+        model.save(model_save_path + f"sb3_ppo/{run}.zip")
 
     plot_learning_curves(run_save_path)
