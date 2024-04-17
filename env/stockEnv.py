@@ -61,7 +61,7 @@ class StockEnv(gym.Env):
                     self.trades += 1
         else:
             # Sell all stocks
-            for index in sell_index:
+            for index in range(len(actions)):
                 amount = self.state[index + self.nb_stock  + 1]
                 self.state[0] += self.state[index + 1] * amount * (1 - self.transaction_fee)
                 self.state[index + self.nb_stock  + 1] = 0
@@ -93,6 +93,8 @@ class StockEnv(gym.Env):
             end_total_asset = self.state[0] + \
                               sum(np.array(self.state[1:(self.nb_stock  + 1)]) * np.array(self.state[(self.nb_stock  + 1):(self.nb_stock  * 2 + 1)]))
             self.asset_memory.append(end_total_asset)
+
+            self.turbulence = self.data['turbulence'].values[0]
 
             self.reward = end_total_asset - begin_total_asset
             self.rewards_memory.append(self.reward)

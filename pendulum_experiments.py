@@ -51,6 +51,7 @@ def plot_learning_curves(save_path):
     plt.xlabel('Episode')
     plt.ylabel('Average Episodic Return')
     plt.legend(loc='lower right')
+    plt.tight_layout()
     plt.show()
 
 

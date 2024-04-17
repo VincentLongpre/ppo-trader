@@ -83,9 +83,8 @@ def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, m
     os.makedirs(model_save_path, exist_ok=True)
 
     for run in range(10): # 50, 1 is for debugging
-        reward_arr_train = []
-
         for _ in range(3):
+            reward_arr_train = []
             try:
                 agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
@@ -93,7 +92,7 @@ def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, m
                     ep_returns = episode(agent, n_episodes, max_iter)
                     reward_arr_train.extend(ep_returns)
 
-                    if ep % 100 == 0:
+                    if ep % 10 == 0:
                         print(f"Episode {ep} - Mean Return: {np.mean(ep_returns)}")
 
                 reward_arr_train = np.array(reward_arr_train)

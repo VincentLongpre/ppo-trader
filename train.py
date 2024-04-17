@@ -53,11 +53,12 @@ def plot_learning_curves(save_path):
     plt.xlabel('Episode')
     plt.ylabel('Average Episodic Return')
     plt.legend(loc='lower right')
+    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
     dataset = pd.read_csv("processed_dataset.csv")
-    dataset = data_split(dataset, '2013-01-01', '2015-09-30')
+    dataset = data_split(dataset, '2013-01-01', '2014-01-01')
 
     with open("configs/ppo_configs.yaml", 'r') as f:
         ppo_configs = yaml.safe_load(f)
@@ -70,14 +71,14 @@ if __name__ == "__main__":
 
     env = StockEnv(dataset, **env_configs)
 
-    run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
+    # run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
 
-    for run in range(10):
-        env = StockEnv(dataset, **env_configs)
-        env = Monitor(env, run_save_path)
-        model = BPPO('MlpPolicy', env)
-        model.learn(total_timesteps=150000, progress_bar=True)
-        os.rename(os.path.join(run_save_path, "monitor.csv"), os.path.join(run_save_path, f"sb3_ppo_{run}.csv"))
-        model.save(model_save_path + f"sb3_ppo/{run}.zip")
+    # for run in range(10):
+    #     env = StockEnv(dataset, **env_configs)
+    #     env = Monitor(env, run_save_path)
+    #     model = BPPO('MlpPolicy', env)
+    #     model.learn(total_timesteps=150000, progress_bar=True)
+    #     os.rename(os.path.join(run_save_path, "monitor.csv"), os.path.join(run_save_path, f"sb3_ppo_{run}.csv"))
+    #     model.save(model_save_path + f"sb3_ppo/{run}.zip")
 
     plot_learning_curves(run_save_path)
