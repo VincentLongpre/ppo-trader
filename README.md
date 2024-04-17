@@ -19,6 +19,13 @@ This project aims to reimplement the Proximal Policy Optimization (PPO) algorith
 
 ## Models
 
+In our project, we developed two distinct classes to facilitate experimentation and comparison:
+
+1. **PPO:** This class represents our final implementation of the Proximal Policy Optimization (PPO) algorithm. It incorporates strategies and configurations that were identified through iterative testing as contributing to improved performance.
+
+2. **PPO_test:** This class serves as a sandbox environment for testing and experimenting with various strategies inspired by Stable Baselines' implementation of PPO. We used this class to explore different configurations, activation functions, policy distribution variances, and other parameters to understand their impact on performance.
+
+
 
 
 ## Installation
