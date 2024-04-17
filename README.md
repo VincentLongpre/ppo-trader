@@ -1,11 +1,10 @@
-# Reinforcement Learning Project
+# Reimplementing PPO and Assessing its Performance in Stock Trading Strategies
 
-This project implements a Proximal Policy Optimization (PPO) algorithm for training agents in various environments. It includes comparisons between our PPO implementation and Stable Baselines' implementation on the Pendulum and custom StockEnv environments.
+Add abstract when finished
 
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Contributing](#contributing)
@@ -13,13 +12,7 @@ This project implements a Proximal Policy Optimization (PPO) algorithm for train
 
 ## Introduction
 
-This project implements a Proximal Policy Optimization (PPO) algorithm for training agents in different environments. The primary focus is on comparing the performance of our PPO implementation with Stable Baselines' implementation on the Pendulum and custom StockEnv environments.
-
-## Features
-
-- Implements Proximal Policy Optimization (PPO) algorithm
-- Compares performance with Stable Baselines' implementation
-- Evaluates on Pendulum and custom StockEnv environments
+This project aims to reimplement the Proximal Policy Optimization (PPO) algorithm from scratch using PyTorch. Our goal is to achieve comparable results to Stable Baselines' implementation across multiple environments. We conduct comparisons between our PPO implementation and Stable Baselines' version on the Pendulum environment and a custom StockEnv environment containing the 30 constituent stocks of the Dow Jones index.
 
 ## Installation
 
