@@ -7,7 +7,8 @@ import os
 # function that runs each episode
 def episode(agent, n_batch, max_iter = 10000, testing=False):
     r_eps = []
-    asset_hist = [agent.env.asset_memory[0]]
+    if testing:
+        asset_hist = [agent.env.asset_memory[0]]
 
     for _ in range(n_batch):
 
@@ -80,20 +81,20 @@ def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gam
 
 def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, model_name, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
     os.makedirs(run_save_path, exist_ok=True)
-    os.makedirs(model_save_path, exist_ok=True)
+    if model_save_path:
+        os.makedirs(model_save_path, exist_ok=True)
 
-    for run in range(1, 10): # 50, 1 is for debugging
-        reward_arr_train = []
-
+    for run in range(10): # 50, 1 is for debugging
         for _ in range(3):
+            reward_arr_train = []
             try:
                 agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-                for ep in range(120): # 100 is for debugging
+                for ep in range(1000): # 100 is for debugging
                     ep_returns = episode(agent, n_episodes, max_iter)
                     reward_arr_train.extend(ep_returns)
 
-                    if ep % 100 == 0:
+                    if ep % 10 == 0:
                         print(f"Episode {ep} - Mean Return: {np.mean(ep_returns)}")
 
                 reward_arr_train = np.array(reward_arr_train)
@@ -101,12 +102,12 @@ def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, m
                 with open(run_save_path + f"{model_name}_{run}.json", 'w') as f:
                     json.dump(reward_arr_train.tolist(), f)
 
-                with open(model_save_path + f"{model_name}/{run}.pkl", 'wb') as f:
-                    pkl.dump(agent, f)
-
+                if model_save_path: 
+                    with open(model_save_path + f"{model_name}/{run}.pkl", 'wb') as f:
+                        pkl.dump(agent, f)
                 break
             
             except:
-                pass
+                continue
 
     return reward_arr_train

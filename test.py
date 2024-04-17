@@ -1,6 +1,7 @@
 import pandas as pd
 import yaml
 import os
+import yfinance as yf
 import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,7 +32,7 @@ def sb3_evaluate_episode(model, env, max_iter=10000):
 
     return asset_history
 
-def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseline, variance_ours, variance_baseline):
+def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseline, variance_ours, variance_baseline, dija_price_rel):
     fig, ax = plt.subplots(figsize=(10, 6))
 
     ax.plot(dates, mean_asset_values_ours, label='Ours', color='blue', linewidth=2)
@@ -39,6 +40,8 @@ def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseli
 
     ax.plot(dates, mean_asset_values_baseline, label='Baseline', color='red', linewidth=2)
     ax.fill_between(dates, mean_asset_values_baseline - 2 * variance_baseline, mean_asset_values_baseline + 2 * variance_baseline, color='salmon', alpha=0.3)
+
+    ax.plot(dates, djia_price_rel, label='DJIA', color='green', linewidth=2)
 
     ax.grid(True, linestyle='--', alpha=0.5)
 
@@ -89,6 +92,7 @@ if __name__ == "__main__":
 
     with open("configs/env_configs.yaml", 'r') as f:
         env_configs = yaml.safe_load(f)
+        # env_configs['env_type'] = 'test'
 
     model_path = "models/"
 
@@ -104,7 +108,7 @@ if __name__ == "__main__":
         'max_dd': []
         }
     
-    for file in os.listdir(model_path + "our_ppo"):
+    for file in [f for f in os.listdir(model_path + "our_ppo") if not f.startswith('.')]:
         with open(model_path + f"our_ppo/{file}", 'rb') as f:
             agent = pkl.load(f)
         
@@ -145,7 +149,7 @@ if __name__ == "__main__":
         'max_dd': []
         }
     
-    for file in os.listdir(model_path + "sb3_ppo"):
+    for file in [f for f in os.listdir(model_path + "sb3_ppo") if not f.startswith('.')]:
         file = os.path.splitext(file)[0]
         agent = BPPO.load(model_path + f"sb3_ppo/{file}")
 
@@ -174,7 +178,12 @@ if __name__ == "__main__":
     sb3_mean_asset = np.mean(sb3_lists_dict['balances'], axis=0)
     sb3_asset_volatility = np.std(sb3_lists_dict['balances'], axis=0) / np.sqrt(n_samples)
 
-    plot_portfolio_stats(dates, our_mean_asset, sb3_mean_asset, our_asset_volatility, sb3_asset_volatility)
+    djia_data = yf.download("^DJI", start="2016-01-01", end="2020-01-01")
+
+    first_close_price = djia_data['Close'].iloc[0]
+    djia_price_rel = 1e6 *  djia_data['Close'] / first_close_price
+
+    plot_portfolio_stats(dates, our_mean_asset, sb3_mean_asset, our_asset_volatility, sb3_asset_volatility, djia_price_rel)
 
     print_mean_statistics(sb3_lists_dict, our_lists_dict)
 

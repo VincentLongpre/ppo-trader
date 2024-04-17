@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 from utils.create_dataset import data_split
 from stable_baselines3.common.monitor import Monitor
-from agent.Original_PPO import PPO, FeedForwardNN
+from agent.PPO import PPO, FeedForwardNN
 from utils.run_episode import hyperparams_run_gradient, run_trials
 from env.stockEnv import StockEnv
 from stable_baselines3 import PPO as BPPO
@@ -53,6 +53,7 @@ def plot_learning_curves(save_path):
     plt.xlabel('Episode')
     plt.ylabel('Average Episodic Return')
     plt.legend(loc='lower right')
+    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
@@ -70,7 +71,7 @@ if __name__ == "__main__":
 
     env = StockEnv(dataset, **env_configs)
 
-    # run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
+    run_trials(PPO, FeedForwardNN, env, run_save_path, model_save_path, "our_ppo", **ppo_configs)
 
     for run in range(10):
         env = StockEnv(dataset, **env_configs)
