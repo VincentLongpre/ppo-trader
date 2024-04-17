@@ -25,9 +25,6 @@ In our project, we developed two distinct classes to facilitate experimentation 
 
 2. **PPO_test:** This class serves as a sandbox environment for testing and experimenting with various strategies inspired by Stable Baselines' implementation of PPO. We used this class to explore different configurations, activation functions, policy distribution variances, and other parameters to understand their impact on performance.
 
-
-
-
 ## Installation
 
 To install and set up the project, follow these steps:
