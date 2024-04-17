@@ -68,13 +68,13 @@ if __name__ == "__main__":
         with open("configs/env_configs.yaml", 'r') as f:
             env_configs = yaml.safe_load(f)
 
-        run_trials(PPO, FeedForwardNN, env, save_path, **ppo_configs)
+        run_trials(PPO, FeedForwardNN, env, save_path, None, "our_ppo", **ppo_configs)
 
-        # for run in range(6, 10):
-        #     env = make_vec_env(env_name, monitor_dir=save_path)
-        #     model = BPPO('MlpPolicy', env)
-        #     model.learn(total_timesteps=1000000, progress_bar=True)
-        #     os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
+        for run in range(10):
+            env = make_vec_env(env_name, monitor_dir=save_path)
+            model = BPPO('MlpPolicy', env)
+            model.learn(total_timesteps=1000000, progress_bar=True)
+            os.rename(os.path.join(save_path, "0.monitor.csv"), os.path.join(save_path, f"ppo_{run}.csv"))
 
     plot_learning_curves(save_path)
 
