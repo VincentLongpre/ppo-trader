@@ -16,10 +16,20 @@ from datetime import datetime
 import empyrical
 
 def sb3_evaluate_episode(model, env, max_iter=10000):
+    """
+    Evaluate the trading performance of a Stable Baselines3 model on a given environment for one episode.
+
+    Parameters:
+    - model (object): The Stable Baselines3 model to evaluate.
+    - env (object): The environment for trading.
+    - max_iter (int): The maximum number of iterations (steps) allowed for the episode. Default is 10000.
+
+    Returns:
+    - asset_history (list): Asset history during the episode.
+    """
     asset_history = [env.asset_memory[0]]
 
     obs, _ = env.reset()
-    termination = False
 
     for _ in range(max_iter):
         action, _ = model.predict(obs, deterministic=True)
@@ -32,7 +42,21 @@ def sb3_evaluate_episode(model, env, max_iter=10000):
 
     return asset_history
 
-def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseline, variance_ours, variance_baseline, dija_price_rel):
+def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseline, variance_ours, variance_baseline, djia_price_rel):
+    """
+    Plot portfolio statistics including mean asset values, variances, and Dow Jones Industrial Average (DJIA) prices.
+
+    Parameters:
+    - dates (list): List of dates.
+    - mean_asset_values_ours (list): Mean asset values for our model.
+    - mean_asset_values_baseline (list): Mean asset values for the baseline model.
+    - variance_ours (list): Variances for our model.
+    - variance_baseline (list): Variances for the baseline model.
+    - djia_price_rel (list): DJIA prices.
+
+    Returns:
+    None
+    """
     fig, ax = plt.subplots(figsize=(10, 6))
 
     ax.plot(dates, mean_asset_values_ours, label='Ours', color='blue', linewidth=2)
@@ -57,6 +81,16 @@ def plot_portfolio_stats(dates, mean_asset_values_ours, mean_asset_values_baseli
     plt.show()
 
 def print_mean_statistics(sb3_lists_dict, our_lists_dict):
+    """
+    Print general portfolio statistics including Sharpe ratio, annual return, maximum drawdown, annual volatility, and cumulative returns.
+
+    Parameters:
+    - sb3_lists_dict (dict): Dictionary containing SB3 statistics.
+    - our_lists_dict (dict): Dictionary containing our model statistics.
+
+    Returns:
+    None
+    """
     mean_sharpe_ratio_sb3 = np.mean(sb3_lists_dict['sharpe_ratio'])
     mean_ann_return_sb3 = np.mean(sb3_lists_dict['ann_return'])
     mean_max_dd_sb3 = np.mean(sb3_lists_dict['max_dd'])
