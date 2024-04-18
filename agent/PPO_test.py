@@ -12,9 +12,24 @@ import logging
 logging.basicConfig(filename='training.log', level=logging.INFO, format='%(message)s')
 
 class PPO:
+    """
+    Proximal Policy Optimization (PPO) algorithm implementation.
+
+    Parameters:
+    - policy_class (object): Policy class for the actor and critic networks.
+    - env (object): Environment for training the agent.
+    - lr (float): Learning rate for the optimizer.
+    - gamma (float): Discount factor for future rewards.
+    - clip (float): Clip parameter for PPO.
+    - ent_coef (float): Coefficient for entropy loss.
+    - critic_factor (float): Factor for critic loss in PPO.
+    - max_grad_norm (float): Maximum gradient norm for PPO.
+    - gae_lamda (float): Lambda value for generalized advantage estimation (GAE).
+    - n_updates (int): Number of updates per episode for PPO.
+    """
     def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lamda, n_updates):
-        self.lr = lr                                # Learning rate of actor optimizer
-        self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
+        self.lr = lr
+        self.gamma = gamma
         self.clip = clip
         self.ent_coef = ent_coef
         self.critic_factor = critic_factor
@@ -38,6 +53,16 @@ class PPO:
         )
 
     def select_action(self, s):
+        """
+        Select action based on the current state.
+
+        Parameters:
+        - s (Tensor): Current state.
+
+        Returns:
+        - a (ndarray): Selected action.
+        - log_prob (Tensor): Log probability of the selected action.
+        """
         mean = self.actor(s)
 
         dist = MultivariateNormal(mean, self.cov_mat)
@@ -49,6 +74,18 @@ class PPO:
         return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
+        """
+        Evaluate the policy and value function.
+
+        Parameters:
+        - batch_s (Tensor): Batch of states.
+        - batch_a (Tensor): Batch of actions.
+
+        Returns:
+        - V (Tensor): Value function estimates.
+        - log_prob (Tensor): Log probabilities of the actions.
+        - entropy (Tensor): Entropy of the action distribution.
+        """
         V = self.critic(batch_s).squeeze()
 
         mean = self.actor(batch_s)
@@ -60,6 +97,18 @@ class PPO:
         return V, log_prob, entropy
 
     def compute_G(self, batch_r, batch_terminal, V):
+        """
+        Compute the episodic returns and the generalized advantage estimate (GAE).
+
+        Parameters:
+        - batch_r (Tensor): Batch of rewards.
+        - batch_terminal (Tensor): Batch of terminal flags.
+        - V (Tensor): Value function estimates.
+
+        Returns:
+        - G (Tensor): Episodic returns.
+        - A (Tensor): Advantage estimates.
+        """
         V = V.clone().cpu().detach().numpy().flatten()
 
         last_gae_lam = 0
@@ -79,6 +128,7 @@ class PPO:
             delta = batch_r[step] + self.gamma * next_value * next_non_terminal - V[step]
             last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
             A[step] = last_gae_lam
+
         # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
         # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
         G = A + V
@@ -89,6 +139,15 @@ class PPO:
         return G, A
 
     def update(self, batch_r, batch_s, batch_a, batch_terminal):
+        """
+        Perform PPO update step.
+
+        Parameters:
+        - batch_r (Tensor): Batch of rewards.
+        - batch_s (Tensor): Batch of states.
+        - batch_a (Tensor): Batch of actions.
+        - batch_terminal (Tensor): Batch of terminal flags.
+        """
         V, old_log_prob, entropy = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
@@ -123,10 +182,6 @@ class PPO:
             loss.backward()
             nn.utils.clip_grad_norm_(list(self.actor.parameters()) + list(self.critic.parameters()) + [self.cov_var], self.max_grad_norm)
             self.optimizer.step()
-"""
-	This file contains a neural network module for us to
-	define our actor and critic networks in PPO.
-"""
 
 class FeedForwardNN(nn.Module):
     """
@@ -137,11 +192,11 @@ class FeedForwardNN(nn.Module):
         Initialize the network and set up the layers.
 
         Parameters:
-            in_dim - input dimensions as an int
-            out_dim - output dimensions as an int
+        - in_dim (int): Input dimensions.
+        - out_dim (int): Output dimensions.
 
-        Return:
-            None
+        Returns:
+        - None
         """
         super(FeedForwardNN, self).__init__()
 
@@ -157,13 +212,13 @@ class FeedForwardNN(nn.Module):
 
     def forward(self, obs):
         """
-            Runs a forward pass on the neural network.
+        Forward pass of the neural network.
 
-            Parameters:
-                obs - observation to pass as input
+        Parameters:
+        - obs (Tensor or ndarray): Input observation.
 
-            Return:
-                output - the output of our forward pass
+        Returns:
+        - Tensor: Output of the forward pass.
         """
         # Convert observation to tensor if it's a numpy array
         if isinstance(obs, np.ndarray):

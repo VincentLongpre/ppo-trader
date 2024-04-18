@@ -7,10 +7,20 @@ import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 
 class PPO:
-    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates):
+    """
+    Proximal Policy Optimization (PPO) algorithm implementation.
 
-        self.lr = lr                                # Learning rate of actor optimizer
-        self.gamma = gamma                          # Discount factor to be applied when calculating Rewards-To-Go
+    Parameters:
+    - policy_class (object): Policy class for the actor and critic networks.
+    - env (object): Environment for training the agent.
+    - lr (float): Learning rate for the optimizer.
+    - gamma (float): Discount factor for future rewards.
+    - clip (float): Clip parameter for PPO.
+    - n_updates (int): Number of updates per episode for PPO.
+    """
+    def __init__(self, policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates):
+        self.lr = lr 
+        self.gamma = gamma
         self.clip = clip
         self.n_updates = n_updates
 
@@ -29,7 +39,16 @@ class PPO:
 
 
     def select_action(self, s):
+        """
+        Select action based on the current state.
 
+        Parameters:
+        - s (Tensor): Current state.
+
+        Returns:
+        - a (ndarray): Selected action.
+        - log_prob (Tensor): Log probability of the selected action.
+        """
         mean = self.actor(s)
 
         dist = MultivariateNormal(mean, self.cov_mat)
@@ -41,7 +60,18 @@ class PPO:
         return a.detach().numpy(), log_prob.detach()
 
     def evaluate(self, batch_s, batch_a):
+        """
+        Evaluate the policy and value function.
 
+        Parameters:
+        - batch_s (Tensor): Batch of states.
+        - batch_a (Tensor): Batch of actions.
+
+        Returns:
+        - V (Tensor): Value function estimates.
+        - log_prob (Tensor): Log probabilities of the actions.
+        - entropy (Tensor): Entropy of the action distribution.
+        """
         V = self.critic(batch_s).squeeze()
 
         mean = self.actor(batch_s)
@@ -51,6 +81,16 @@ class PPO:
         return V, log_prob
 
     def compute_G(self, batch_r, batch_terminal, V):
+        """
+        Compute the episodic returns.
+
+        Parameters:
+        - batch_r (Tensor): Batch of rewards.
+
+        Returns:
+        - G (Tensor): Episodic returns.
+        - A (Tensor): Advantage estimates.
+        """
         G = 0
         batch_G = []
 
@@ -64,6 +104,15 @@ class PPO:
         return batch_G
 
     def update(self, batch_r, batch_s, batch_a, batch_terminal):
+        """
+        Perform PPO update step.
+
+        Parameters:
+        - batch_r (Tensor): Batch of rewards.
+        - batch_s (Tensor): Batch of states.
+        - batch_a (Tensor): Batch of actions.
+        - batch_terminal (Tensor): Batch of terminal flags.
+        """
         V, old_log_prob = self.evaluate(batch_s, batch_a)
 
         old_log_prob = old_log_prob.detach()
@@ -103,11 +152,11 @@ class FeedForwardNN(nn.Module):
         Initialize the network and set up the layers.
 
         Parameters:
-            in_dim - input dimensions as an int
-            out_dim - output dimensions as an int
+        - in_dim (int): Input dimensions.
+        - out_dim (int): Output dimensions.
 
-        Return:
-            None
+        Returns:
+        - None
         """
         super(FeedForwardNN, self).__init__()
 
@@ -122,19 +171,19 @@ class FeedForwardNN(nn.Module):
 
     def forward(self, obs):
         """
-            Runs a forward pass on the neural network.
+        Forward pass of the neural network.
 
-            Parameters:
-                obs - observation to pass as input
+        Parameters:
+        - obs (Tensor or ndarray): Input observation.
 
-            Return:
-                output - the output of our forward pass
+        Returns:
+        - Tensor: Output of the forward pass.
         """
         # Convert observation to tensor if it's a numpy array
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float)
 
-        activation1 = F.relu(self.layer1(obs))
+        activation1 = F.relu(self.ln1(self.layer1(obs)))
         activation2 = F.relu(self.layer2(activation1))
         output = self.layer3(activation2)
 

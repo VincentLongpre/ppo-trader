@@ -13,6 +13,12 @@ from env.stockEnv import StockEnv
 from stable_baselines3 import PPO as BPPO
 
 def plot_learning_curves(save_path):
+    """
+    Plot learning curves comparing baseline PPO and our PPO.
+
+    Parameters:
+    - save_path (str): Path to the directory containing the saved results.
+    """
     ppo_returns = []
     mcppo_returns = []
     
@@ -36,14 +42,14 @@ def plot_learning_curves(save_path):
     mcppo_mean_reward = np.mean(mcppo_returns, axis=0)
     mcppo_std_reward = np.std(mcppo_returns, axis=0)
 
-    # Plot PPO
+    # Plot baseline PPO
     plt.plot(ppo_mean_reward, label="Baseline")
     plt.fill_between(range(len(ppo_mean_reward)),
                      ppo_mean_reward - ppo_std_reward,
                      ppo_mean_reward + ppo_std_reward,
                      alpha=0.5)
 
-    # Plot MC-PPO
+    # Plot our PPO
     plt.plot(mcppo_mean_reward, label="Ours")
     plt.fill_between(range(len(mcppo_mean_reward)),
                      mcppo_mean_reward - mcppo_std_reward,

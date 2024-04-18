@@ -8,6 +8,17 @@ from ta.trend import ADXIndicator
 from datetime import datetime, timedelta
 
 def get_ticker_data(start_date, end_date, ticker_list):
+    """
+    Get historical stock price data for the specified tickers within the specified date range.
+
+    Parameters:
+    - start_date (str): Start date in 'YYYY-MM-DD' format.
+    - end_date (str): End date in 'YYYY-MM-DD' format.
+    - ticker_list (list): List of ticker symbols.
+
+    Returns:
+    - res_df (DataFrame): DataFrame containing historical stock price data for the specified tickers.
+    """
     all_data = []
     for ticker_symbol in ticker_list:
         stock_data = yf.download(ticker_symbol, start=start_date, end=end_date)
@@ -23,6 +34,15 @@ def get_ticker_data(start_date, end_date, ticker_list):
     return res_df
 
 def add_technical_indicators(dataset):
+    """
+    Add technical indicators (MACD, RSI, CCI, ADX) to the given dataset.
+
+    Parameters:
+    - dataset (DataFrame): DataFrame containing stock price data.
+
+    Returns:
+    - dataset (DataFrame): DataFrame with added technical indicators.
+    """
     technical_indicators = {}
     
     for ticker_symbol, data in dataset.groupby('ticker'):
@@ -47,6 +67,16 @@ def add_technical_indicators(dataset):
     return dataset
 
 def calculate_turbulence(df, window=252):
+    """
+    Calculate turbulence for each day based on historical stock prices.
+
+    Parameters:
+    - df (DataFrame): DataFrame containing stock price data.
+    - window (int): Window size for calculating historical turbulence. Default is 252.
+
+    Returns:
+    - df_copy (DataFrame): DataFrame with added turbulence column.
+    """
     df_copy = df.copy()
     df_price_pivot = df.pivot(index='date', columns='ticker', values='adjcp')
     
@@ -67,6 +97,17 @@ def calculate_turbulence(df, window=252):
     return df_copy
 
 def create_dataset(start_date, end_date, ticker_list):
+    """
+    Create a dataset containing stock price data, technical indicators, and turbulence.
+
+    Parameters:
+    - start_date (str): Start date for data retrieval (YYYY-MM-DD).
+    - end_date (str): End date for data retrieval (YYYY-MM-DD).
+    - ticker_list (list): List of ticker symbols.
+
+    Returns:
+    - dataset (DataFrame): DataFrame containing the created dataset.
+    """
     # Query data with extra time buffer for window metrics
     buffer_start = (datetime.strptime(start_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
     dataset = get_ticker_data(buffer_start, end_date, ticker_list)
@@ -79,6 +120,17 @@ def create_dataset(start_date, end_date, ticker_list):
     return dataset
 
 def data_split(dataset, start, end):
+    """
+    Split the dataset based on the specified start and end dates.
+
+    Parameters:
+    - dataset (DataFrame): DataFrame containing the dataset to be split.
+    - start (str): Start date for the split (YYYY-MM-DD).
+    - end (str): End date for the split (YYYY-MM-DD).
+
+    Returns:
+    - dataset (DataFrame): DataFrame containing the split dataset.
+    """
     dataset = dataset[(dataset.date >= start) & (dataset.date < end)]
     dataset = dataset.sort_values(['date','ticker'], ignore_index=True)
     dataset.index = dataset.date.factorize()[0]

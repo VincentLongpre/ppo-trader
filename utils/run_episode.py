@@ -4,8 +4,19 @@ import torch
 import json
 import os
 
-# function that runs each episode
 def episode(agent, n_batch, max_iter = 10000, testing=False):
+    """
+    Run a batch of episodes for the given agent.
+
+    Parameters:
+    - agent (object): The agent instance being trained.
+    - n_batch (int): Number of episodes to run in the batch.
+    - max_iter (int): The maximum number of iterations (steps) allowed for each episode. Default is 10000.
+    - testing (bool): Whether the episodes are for testing purposes. Default is False.
+
+    Returns:
+    - r_eps (list): List of episodic returns for each episode in the batch.
+    """
     r_eps = []
     if testing:
         asset_hist = [agent.env.asset_memory[0]]
@@ -49,8 +60,7 @@ def episode(agent, n_batch, max_iter = 10000, testing=False):
 
         if not testing:
             r_eps.append(r_ep)
-        # print(f'actions are: {batch_a[-1]}')
-        # print(f'Variance is: {agent.cov_var}')
+
         batch_r, batch_s, batch_a, batch_terminal = torch.tensor(np.array(batch_r), dtype=torch.float), torch.tensor(np.array(batch_s), dtype=torch.float), torch.tensor(np.array(batch_a), dtype=torch.float), torch.tensor(np.array(batch_terminal), dtype=torch.float)
 
         if not testing:
@@ -61,36 +71,43 @@ def episode(agent, n_batch, max_iter = 10000, testing=False):
 
     return r_eps
 
-# function that runs each hyperparameter setting
-def hyperparams_run_gradient(agent_class, policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
-    reward_arr_train = np.zeros((len(learning_rates), 50, 1000))
-
-    for i, lr in enumerate(learning_rates):
-        for run in range(10): # 50, 1 is for debugging
-            print(f'lr_{lr}, for run_{run}')
-            agent = agent_class(policy_class, env, lr, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
-
-            ep_rewards = []
-            for ep in range(100): # 100 is for debugging
-                print(ep)
-                ep_rewards.extend(episode(agent, n_episodes, max_iter))
-
-            reward_arr_train[i, run, :] = ep_rewards
-
-    return reward_arr_train
-
 def run_trials(agent_class, policy_class, env, run_save_path, model_save_path, model_name, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates, n_episodes, max_iter):
+    """
+    Run multiple trials for training the agent on the given environment and save the resulting returns 
+    (and models if a model save path is specified).
+
+    Parameters:
+    - agent_class (object): Class of the agent to be trained.
+    - policy_class (object): Class of the policy used by the agent.
+    - env (object): Environment for training the agent.
+    - run_save_path (str): Path to save the training results.
+    - model_save_path (str): Path to save the trained models. Default is None.
+    - model_name (str): Name of the model being trained.
+    - learning_rate (float): Learning rate for training the agent.
+    - gamma (float): Discount factor for future rewards.
+    - clip (float): Clip parameter for PPO.
+    - ent_coef (float): Coefficient for the entropy loss.
+    - critic_factor (float): Factor for critic loss in PPO.
+    - max_grad_norm (float): Maximum gradient norm for PPO.
+    - gae_lambda (float): Lambda value for generalized advantage estimation (GAE).
+    - n_updates (int): Number of updates per episode for PPO.
+    - n_episodes (int): Number of episodes per trial.
+    - max_iter (int): Maximum number of iterations (steps) per episode.
+
+    Returns:
+    - reward_arr_train (array): Array containing the episodic returns for each episode in the last trial.
+    """
     os.makedirs(run_save_path, exist_ok=True)
     if model_save_path:
         os.makedirs(model_save_path, exist_ok=True)
 
-    for run in range(10): # 50, 1 is for debugging
+    for run in range(10):
         for _ in range(3):
             reward_arr_train = []
             try:
                 agent = agent_class(policy_class, env, learning_rates, gamma, clip, ent_coef, critic_factor, max_grad_norm, gae_lambda, n_updates)
 
-                for ep in range(1000): # 100 is for debugging
+                for ep in range(1000):
                     ep_returns = episode(agent, n_episodes, max_iter)
                     reward_arr_train.extend(ep_returns)
 
