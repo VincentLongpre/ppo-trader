@@ -2,7 +2,7 @@
 
 By [Alexandre Diz Ganito](https://github.com/Dizga), [Vincent Longpré](https://github.com/VincentLongpre) and [Igman Talbi](https://github.com/Iggy1055).
 
-Final project, COMP579 : Reinforcement Learning - Winter 2024, Prof. Doina Precup. McGill University
+Final project, COMP579 : Reinforcement Learning - Winter 2024, Prof. Doina Precup. *McGill University*
 
 ## Table of Contents
 
