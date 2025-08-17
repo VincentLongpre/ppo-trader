@@ -5,8 +5,6 @@ import yfinance as yf
 from ta.trend import MACD, CCIIndicator, ADXIndicator
 from ta.momentum import RSIIndicator
 from datetime import datetime, timedelta
-from sklearn.preprocessing import MinMaxScaler
-import joblib
 
 # --------------------------
 # 1. Get S&P 500 tickers
@@ -80,9 +78,8 @@ def create_dataset(start_date, end_date, tickers):
     df = get_ticker_data(buffer_start, end_date, tickers)
     df = add_technical_indicators(df)
 
-    # Log-transform price columns
-    for col in ['adjcp','open','high','low']:
-        df[col] = np.log(df[col].replace(0, np.nan)).replace(-np.inf, np.nan)
+    # **DO NOT LOG-TRANSFORM PRICES**
+    # Raw prices are kept: adjcp, open, high, low remain unchanged
 
     df = calculate_turbulence(df)
 
@@ -139,14 +136,7 @@ if __name__ == "__main__":
     train_data = data_split(dataset, train_start, train_end)
     test_data = data_split(dataset, test_start, test_end)
 
-    # MinMaxScaler: fit on train, transform both
-    scaler = MinMaxScaler(feature_range=(-1,1))
-    feature_cols = train_data.select_dtypes(include=[np.number]).columns.drop(['day'])
-    train_data[feature_cols] = scaler.fit_transform(train_data[feature_cols])
-    test_data[feature_cols] = scaler.transform(test_data[feature_cols])
-
-    # Save processed data
+    # Save raw train/test data
     train_data.to_csv('processed_dataset_train.csv', index=True, index_label='date_env')
     test_data.to_csv('processed_dataset_test.csv', index=True, index_label='date_env')
-    joblib.dump(scaler, "scaler.pkl")
-    print("✅ Saved train/test datasets and scaler")
+    print("✅ Saved train/test datasets (raw prices)")
