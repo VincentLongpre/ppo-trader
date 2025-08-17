@@ -1,9 +1,9 @@
 day: 0
-turbulence_threshold: 140
-hmax: 100
+env_type: train
+hmax: 50
 initial_balance: 1000000
-nb_stock: 30
-transaction_fee: 0.001
+nb_stock: 501
 reward_scaling: 0.0001
 seed: 42
-env_type: 'train'
+transaction_fee: 0.01
+turbulence_threshold: 140
