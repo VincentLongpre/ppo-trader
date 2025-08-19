@@ -66,15 +66,15 @@ if __name__ == "__main__":
         model = PPO(
             policy="MlpPolicy",
             env=env,
-            learning_rate=3e-4,
-            clip_range=0.2,
+            learning_rate=1e-4,
+            clip_range=0.5,
             batch_size=64,
-            n_steps=2048,
+            n_steps=512,
             verbose=1,
-            ent_coef=0.001,
-            vf_coef=0.85,
+            ent_coef=0.01,
+            vf_coef=0.65,
             policy_kwargs=dict(
-            net_arch=dict(pi=[32, 32], vf=[16,16])
+            net_arch=dict(pi=[64, 64, 64], vf=[64, 64, 64])
         )
         )
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         if hasattr(model.policy.mlp_extractor, "policy_net"):
             model.policy.mlp_extractor.policy_net.add_module("tanh_head", TanhHead())
 
-        model.learn(total_timesteps=500_000, progress_bar=True)
+        model.learn(total_timesteps=100_000, progress_bar=True)
 
         model_path = os.path.join(model_save_path, f"{run}.zip")
         model.save(model_path)

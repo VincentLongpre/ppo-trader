@@ -28,14 +28,15 @@ def evaluate_episode(model, env, max_iter=10000):
     return asset_history
 
 
-def plot_portfolio(dates, mean_assets, asset_std, benchmark):
+def plot_portfolio(dates, mean_assets, asset_std, benchmark_voo, benchmark_dji):
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(dates, mean_assets, label='PPO', color='blue', linewidth=2)
     ax.fill_between(dates,
                     mean_assets - 2 * asset_std,
                     mean_assets + 2 * asset_std,
                     color='skyblue', alpha=0.3)
-    ax.plot(dates, benchmark, label='VOO', color='green', linewidth=2)
+    ax.plot(dates, benchmark_voo, label='VOO', color='green', linewidth=2)
+    ax.plot(dates, benchmark_dji, label='Dow Jones', color='red', linewidth=2)
     ax.set_xlabel("Date")
     ax.set_ylabel("Portfolio Value")
     ax.grid(True, linestyle='--', alpha=0.5)
@@ -118,12 +119,21 @@ if __name__ == "__main__":
     # -------------------------
     voo_data = yf.download("VOO", start=dates.min(), end=dates.max(), auto_adjust=True)
     voo_data = voo_data.reindex(dates)
-    first_close = voo_data['Close'].iloc[0]
-    benchmark = 1e6 * voo_data['Close'] / first_close
-    benchmark = benchmark.values
+    first_voo_close = voo_data['Close'].iloc[0]
+    benchmark_voo = 1e6 * voo_data['Close'] / first_voo_close
+    benchmark_voo = benchmark_voo.values
 
     # -------------------------
-    # 7. Plot and print statistics
+    # 7. DJI benchmark
     # -------------------------
-    plot_portfolio(dates, mean_assets[1:], asset_std[1:], benchmark)
+    dji_data = yf.download("^DJI", start=dates.min(), end=dates.max(), auto_adjust=True)
+    dji_data = dji_data.reindex(dates)
+    first_dji_close = dji_data['Close'].iloc[0]
+    benchmark_dji = 1e6 * dji_data['Close'] / first_dji_close
+    benchmark_dji = benchmark_dji.values
+
+    # -------------------------
+    # 8. Plot and print statistics
+    # -------------------------
+    plot_portfolio(dates, mean_assets[1:], asset_std[1:], benchmark_voo, benchmark_dji)
     print_statistics(stats)
