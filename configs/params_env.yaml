@@ -2,8 +2,10 @@ day: 0
 env_type: train
 hmax: 100
 initial_balance: 1000000
-nb_stock: 500
-reward_scaling: 1
+nb_stock: 30
+reward_scaling: 0.00001
 seed: 42
 transaction_fee: 0.001
 turbulence_threshold: 140
+history_length: 30
+action_penalty: 0

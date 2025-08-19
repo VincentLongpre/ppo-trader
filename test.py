@@ -5,32 +5,36 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import MonthLocator
 import yfinance as yf
 from env.stockEnv import StockEnv
-from sb3_contrib import RecurrentPPO
+from stable_baselines3 import PPO
 import empyrical
 import yaml
-import torch
 
-def evaluate_episode(model, env, lstm_states=None, max_iter=10000):
-    """Evaluate one episode of the agent in raw-dollar terms using a given LSTM state."""
+
+def evaluate_episode(model, env, max_iter=10000):
+    """Evaluate one episode of the agent in raw-dollar terms using real prices."""
     asset_history = [env.asset_memory[0]]  # initial cash
     obs, _ = env.reset()
     done = False
 
     for _ in range(max_iter):
-        action, lstm_states = model.predict(obs, state=lstm_states, deterministic=True)
+        action, _ = model.predict(obs, deterministic=True)
         obs, _, done, _, _ = env.step(action)
-        asset_history.append(env.asset_memory[-1])
+        # compute total asset using un-logged/un-scaled prices
+        real_prices = np.expm1(env.data.adjcp.values)
+        total_asset = env.state[0] + sum(real_prices * np.array(env.state[(env.nb_stock + 1):(env.nb_stock * 2 + 1)]))
+        asset_history.append(total_asset)
         if done:
             break
     return asset_history
 
+
 def plot_portfolio(dates, mean_assets, asset_std, benchmark):
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(dates, mean_assets, label='RecurrentPPO', color='red', linewidth=2)
+    ax.plot(dates, mean_assets, label='PPO', color='blue', linewidth=2)
     ax.fill_between(dates,
                     mean_assets - 2 * asset_std,
                     mean_assets + 2 * asset_std,
-                    color='salmon', alpha=0.3)
+                    color='skyblue', alpha=0.3)
     ax.plot(dates, benchmark, label='VOO', color='green', linewidth=2)
     ax.set_xlabel("Date")
     ax.set_ylabel("Portfolio Value")
@@ -41,9 +45,10 @@ def plot_portfolio(dates, mean_assets, asset_std, benchmark):
     plt.tight_layout()
     plt.show()
 
+
 def print_statistics(stats_dict):
     df = pd.DataFrame({
-        "Method": ["RecurrentPPO"],
+        "Method": ["PPO"],
         "Mean Sharpe Ratio": [np.mean(stats_dict['sharpe'])],
         "Mean Annual Return": [np.mean(stats_dict['annual_return'])],
         "Mean Max Drawdown": [np.mean(stats_dict['max_dd'])],
@@ -52,6 +57,7 @@ def print_statistics(stats_dict):
     })
     print("Mean Portfolio Statistics:")
     print(df)
+
 
 if __name__ == "__main__":
     # -------------------------
@@ -81,27 +87,16 @@ if __name__ == "__main__":
     }
 
     # -------------------------
-    # 4. Load trained RecurrentPPO models
+    # 4. Load trained PPO models
     # -------------------------
-    model_dir = "models/rppo/"
+    model_dir = "models/ppo/"
     model_files = [f for f in os.listdir(model_dir) if f.endswith('.zip')]
 
     for f in model_files:
         model_path = os.path.join(model_dir, f)
-        model = RecurrentPPO.load(model_path)
+        model = PPO.load(model_path)
 
-        # Load last LSTM state corresponding to this model
-        lstm_state_path = os.path.join(model_dir, f"last_lstm_state_{f.split('.')[0]}.pt")
-        if os.path.exists(lstm_state_path):
-            # Allow numpy unpickling
-            with torch.serialization.safe_globals([np.core.multiarray._reconstruct]):
-                lstm_states = torch.load(lstm_state_path, weights_only=False)
-            print(f"✅ Loaded last LSTM state from {lstm_state_path}")
-        else:
-            lstm_states = None
-            print(f"⚠️ No saved LSTM state found for {model_path}, starting from zero.")
-
-        cur_assets = evaluate_episode(model, env, lstm_states=lstm_states)
+        cur_assets = evaluate_episode(model, env)
         stats['balances'].append(cur_assets)
 
         daily_returns = np.diff(cur_assets) / cur_assets[:-1]
