@@ -4,32 +4,25 @@ import numpy as np
 import yfinance as yf
 from ta.trend import MACD, CCIIndicator, ADXIndicator
 from ta.momentum import RSIIndicator
-from datetime import datetime, timedelta
+from datetime import datetime
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 
 # --------------------------
-# 1. Get Dow Jones tickers
+# 1. Get S&P 500 tickers
 # --------------------------
-def get_dow_jones_tickers():
-    url = "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average"
+def get_sp500_tickers():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     try:
         tables = pd.read_html(url, header=0)
-        table = tables[1]
-        if "Symbol" in table.columns:
-            col = "Symbol"
-        elif "Ticker" in table.columns:
-            col = "Ticker"
-        else:
-            raise ValueError("No ticker column found")
-        tickers = table[col].astype(str).str.replace('.', '-', regex=False).tolist()
+        table = tables[0]  # first table contains the list
+        tickers = table['Symbol'].astype(str).str.replace('.', '-', regex=False).tolist()
         return tickers
     except Exception as e:
-        print(f"⚠️ Could not fetch from Wikipedia ({e}), using hardcoded list.")
+        print(f"⚠️ Could not fetch from Wikipedia ({e}), using hardcoded subset.")
         return [
-            "AAPL", "AMGN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS", "GS",
-            "HD", "HON", "IBM", "INTC", "JNJ", "JPM", "KO", "MCD", "MMM", "MRK",
-            "MSFT", "NKE", "PG", "TRV", "UNH", "V", "VZ", "WBA", "WMT", "XOM"
+            "AAPL","MSFT","AMZN","GOOGL","FB","TSLA","BRK-B","NVDA","JPM","JNJ",
+            "V","UNH","HD","PG","MA","DIS","PYPL","BAC","ADBE","CMCSA"
         ]
 
 # --------------------------
@@ -58,7 +51,6 @@ def add_features(df):
         rsi = RSIIndicator(group['adjcp']).rsi()
         cci = CCIIndicator(group['high'], group['low'], group['adjcp']).cci()
         adx = ADXIndicator(group['high'], group['low'], group['adjcp']).adx()
-        # Sector-based / rolling features (here we use simple rolling as placeholder)
         volatility = group['adjcp'].pct_change().rolling(20).std()
         ma10 = group['adjcp'].rolling(10).mean()
         ma50 = group['adjcp'].rolling(50).mean()
@@ -143,8 +135,8 @@ if __name__ == "__main__":
         df = pd.read_csv("processed_dataset.csv", parse_dates=['date'])
         print("⚡ Loaded processed_dataset.csv")
     else:
-        tickers = get_dow_jones_tickers()
-        print(f"📈 Using {len(tickers)} Dow Jones tickers: {tickers}")
+        tickers = get_sp500_tickers()
+        print(f"📈 Using {len(tickers)} S&P 500 tickers")
         df = get_ticker_data(start_date, end_date, tickers)
         df = add_features(df)
         df = calculate_turbulence(df)

@@ -2,7 +2,7 @@ day: 0
 env_type: train
 hmax: 100
 initial_balance: 1000000
-nb_stock: 30
+nb_stock: 503
 reward_scaling: 0.00001
 seed: 42
 transaction_fee: 0.001

@@ -8,8 +8,8 @@ import yaml
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from env.stockEnv import StockEnv
-
 
 # ------------------------
 # Custom Tanh Head
@@ -18,6 +18,27 @@ class TanhHead(nn.Module):
     def forward(self, x):
         return torch.tanh(x)
 
+# ------------------------
+# Custom MLP Feature Extractor
+# ------------------------
+class MLPFeatureExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space, output_dim=512):
+        super().__init__(observation_space, features_dim=output_dim)
+        obs_dim = int(np.prod(observation_space.shape))
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, 1024),
+            nn.LayerNorm(1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
+            nn.ReLU()
+        )
+
+    def forward(self, observations):
+        x = observations.view(observations.size(0), -1)  # flatten
+        return self.net(x)
 
 # ------------------------
 # Learning Curve Plotting
@@ -45,7 +66,6 @@ def plot_learning_curves(save_path, label="PPO"):
     plt.tight_layout()
     plt.show()
 
-
 # ------------------------
 # Main
 # ------------------------
@@ -66,23 +86,25 @@ if __name__ == "__main__":
         model = PPO(
             policy="MlpPolicy",
             env=env,
-            learning_rate=1e-4,
+            learning_rate=3e-4,
             clip_range=0.5,
-            batch_size=64,
+            batch_size=256,
             n_steps=512,
             verbose=1,
-            ent_coef=0.01,
-            vf_coef=0.65,
+            ent_coef=0.05,  # slightly higher for stable exploration
+            vf_coef=0.75,
             policy_kwargs=dict(
-            net_arch=dict(pi=[64, 64, 64], vf=[64, 64, 64])
-        )
+                features_extractor_class=MLPFeatureExtractor,
+                features_extractor_kwargs=dict(output_dim=512),
+                net_arch=[256, 256, 256]  # policy/value head sizes
+            )
         )
 
         # add tanh head to actor network
         if hasattr(model.policy.mlp_extractor, "policy_net"):
             model.policy.mlp_extractor.policy_net.add_module("tanh_head", TanhHead())
 
-        model.learn(total_timesteps=100_000, progress_bar=True)
+        model.learn(total_timesteps=500_000, progress_bar=True)
 
         model_path = os.path.join(model_save_path, f"{run}.zip")
         model.save(model_path)
